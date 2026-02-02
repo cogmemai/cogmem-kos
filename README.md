@@ -1,5 +1,7 @@
 # cogmem-kos
 
+> ⚠️ **Work in Progress**: This project is under active development. APIs and interfaces may change without notice until v1.0.
+
 **Framework-agnostic Knowledge Operating System kernel**
 
 cogmem-kos provides a retrieval-first knowledge infrastructure with:
@@ -107,4 +109,4 @@ ruff check src/
 
 ## License
 
-MIT
+Apache 2.0
