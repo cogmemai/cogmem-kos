@@ -1,0 +1,200 @@
+---
+title: "Search"
+description: "Execute search queries"
+icon: "magnifying-glass"
+---
+
+# Search
+
+Execute text search queries with highlights and facets.
+
+## Endpoint
+
+```
+POST /search
+```
+
+## Request Body
+
+<ParamField body="tenant_id" type="string" required>
+  Tenant identifier for multi-tenant isolation
+</ParamField>
+
+<ParamField body="user_id" type="string">
+  Optional user identifier for user-level scoping
+</ParamField>
+
+<ParamField body="query" type="string" required>
+  Search query string
+</ParamField>
+
+<ParamField body="filters" type="object">
+  Field filters to narrow results
+</ParamField>
+
+<ParamField body="facets_requested" type="array">
+  Fields to aggregate for facets (e.g., `["source", "content_type"]`)
+</ParamField>
+
+<ParamField body="limit" type="integer" default="20">
+  Maximum results to return (1-100)
+</ParamField>
+
+<ParamField body="offset" type="integer" default="0">
+  Pagination offset
+</ParamField>
+
+## Example Request
+
+```bash
+curl -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "demo",
+    "user_id": "user-1",
+    "query": "machine learning",
+    "filters": {
+      "source": "files"
+    },
+    "facets_requested": ["source", "content_type"],
+    "limit": 10
+  }'
+```
+
+## Response
+
+<ResponseField name="hits" type="array">
+  Array of search hits
+  
+  <Expandable title="Hit object">
+    <ResponseField name="kos_id" type="string">
+      Unique identifier
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Document title
+    </ResponseField>
+    <ResponseField name="snippet" type="string">
+      Text snippet
+    </ResponseField>
+    <ResponseField name="highlights" type="array">
+      Highlighted text fragments with `<em>` tags
+    </ResponseField>
+    <ResponseField name="score" type="number">
+      Relevance score
+    </ResponseField>
+    <ResponseField name="source" type="string">
+      Source system (files, gmail, etc.)
+    </ResponseField>
+    <ResponseField name="content_type" type="string">
+      Content type
+    </ResponseField>
+    <ResponseField name="item_id" type="string">
+      Parent item ID
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="facets" type="array">
+  Aggregation results
+  
+  <Expandable title="Facet object">
+    <ResponseField name="field" type="string">
+      Field name
+    </ResponseField>
+    <ResponseField name="buckets" type="array">
+      Value counts
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="related_entities" type="array">
+  Entities mentioned in top hits
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+  Total matching documents
+</ResponseField>
+
+<ResponseField name="took_ms" type="integer">
+  Query execution time in milliseconds
+</ResponseField>
+
+## Example Response
+
+```json
+{
+  "hits": [
+    {
+      "kos_id": "passage-abc123",
+      "title": "Introduction to Machine Learning",
+      "snippet": "Machine learning is a subset of artificial intelligence...",
+      "highlights": [
+        "<em>Machine learning</em> is a subset of artificial intelligence that enables systems to learn"
+      ],
+      "score": 2.45,
+      "source": "files",
+      "content_type": "article",
+      "item_id": "item-xyz789"
+    }
+  ],
+  "facets": [
+    {
+      "field": "source",
+      "buckets": [
+        {"value": "files", "count": 15},
+        {"value": "gmail", "count": 3}
+      ]
+    },
+    {
+      "field": "content_type",
+      "buckets": [
+        {"value": "article", "count": 12},
+        {"value": "email", "count": 6}
+      ]
+    }
+  ],
+  "related_entities": [
+    {
+      "kos_id": "entity-123",
+      "name": "Andrew Ng",
+      "type": "person"
+    }
+  ],
+  "total": 18,
+  "took_ms": 23
+}
+```
+
+## Filtering
+
+Use the `filters` object to narrow results:
+
+```json
+{
+  "filters": {
+    "source": "gmail",
+    "content_type": "email"
+  }
+}
+```
+
+Array values match any:
+
+```json
+{
+  "filters": {
+    "source": ["files", "gmail"]
+  }
+}
+```
+
+## Pagination
+
+Use `limit` and `offset` for pagination:
+
+```json
+{
+  "limit": 20,
+  "offset": 40
+}
+```

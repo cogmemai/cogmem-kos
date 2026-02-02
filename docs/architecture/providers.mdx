@@ -1,0 +1,191 @@
+---
+title: "Providers"
+description: "Database provider implementations"
+icon: "database"
+---
+
+# Providers
+
+Providers implement contracts using specific database clients.
+
+## Enterprise Mode Providers
+
+### Postgres Provider
+
+Implements: `ObjectStore`, `OutboxStore`, `AdminStore`
+
+```python
+from kos.providers.postgres import (
+    PostgresConnection,
+    PostgresObjectStore,
+    PostgresOutboxStore,
+    PostgresAdminStore,
+)
+
+conn = PostgresConnection(dsn="postgresql+asyncpg://...")
+object_store = PostgresObjectStore(conn)
+outbox_store = PostgresOutboxStore(conn)
+admin_store = PostgresAdminStore(conn)
+```
+
+**Tables:**
+- `items`, `passages`, `entities`, `artifacts`, `agent_actions`
+- `outbox_events`
+- `tenants`, `users`, `connector_configs`, `run_logs`
+
+### OpenSearch Provider
+
+Implements: `TextSearchProvider`
+
+```python
+from kos.providers.opensearch import (
+    OpenSearchClient,
+    OpenSearchTextSearchProvider,
+)
+
+client = OpenSearchClient(
+    url="https://localhost:9200",
+    user="admin",
+    password="admin",
+)
+text_search = OpenSearchTextSearchProvider(client)
+```
+
+**Index:** `kos_passages`
+
+**Features:**
+- Full-text search with highlighting
+- Faceted aggregations (source, content_type, date)
+- Term vectors for snippets
+
+### Neo4j Provider
+
+Implements: `GraphSearchProvider`
+
+```python
+from kos.providers.neo4j import (
+    Neo4jClient,
+    Neo4jGraphSearchProvider,
+)
+
+client = Neo4jClient(
+    uri="bolt://localhost:7687",
+    user="neo4j",
+    password="password",
+)
+graph_search = Neo4jGraphSearchProvider(client)
+```
+
+**Nodes:**
+- `:Entity {kos_id, tenant_id, name, type}`
+- `:Item {kos_id, tenant_id, title, source}`
+- `:Passage {kos_id, tenant_id}`
+
+**Relationships:**
+- `(Item)-[:HAS_PASSAGE]->(Passage)`
+- `(Passage)-[:MENTIONS]->(Entity)`
+- `(Entity)-[:RELATED_TO {type}]->(Entity)`
+
+### Qdrant Provider
+
+Implements: `VectorSearchProvider`
+
+```python
+from kos.providers.qdrant import (
+    QdrantClient,
+    QdrantVectorSearchProvider,
+)
+
+client = QdrantClient(
+    url="http://localhost:6333",
+    dimensions=1536,
+)
+vector_search = QdrantVectorSearchProvider(client, embedder)
+```
+
+**Collection:** `kos_passages_vectors`
+
+**Payload:** `kos_id`, `tenant_id`, `user_id`, `item_id`, `source`
+
+## Solo Mode Provider
+
+### SurrealDB Provider
+
+Implements: ALL contracts
+
+```python
+from kos.providers.surrealdb import (
+    SurrealDBClient,
+    SurrealDBObjectStore,
+    SurrealDBOutboxStore,
+    SurrealDBTextSearchProvider,
+    SurrealDBVectorSearchProvider,
+    SurrealDBGraphSearchProvider,
+)
+
+client = SurrealDBClient(
+    url="ws://localhost:8000/rpc",
+    namespace="cogmem",
+    database="kos",
+)
+await client.connect()
+
+object_store = SurrealDBObjectStore(client)
+outbox_store = SurrealDBOutboxStore(client)
+text_search = SurrealDBTextSearchProvider(client)
+vector_search = SurrealDBVectorSearchProvider(client, embedder)
+graph_search = SurrealDBGraphSearchProvider(client)
+```
+
+**Tables:** Same as Postgres
+**Edges:** `mentions`, `has_passage`, `related_to`
+
+## Provider Selection
+
+Providers are selected based on `KOS_MODE`:
+
+```python
+from kos.kernel.config.settings import get_settings, KosMode
+
+settings = get_settings()
+
+if settings.kos_mode == KosMode.ENTERPRISE:
+    # Use Postgres, OpenSearch, Neo4j, Qdrant
+    ...
+else:
+    # Use SurrealDB for everything
+    ...
+```
+
+## Adding Custom Providers
+
+To add a new provider:
+
+1. Create a new package in `kos/providers/`
+2. Implement the required contracts
+3. Add to dependency extras in `pyproject.toml`
+4. Update the dependency injection in `kos/kernel/api/http/dependencies.py`
+
+```python
+# Example: Custom vector provider
+from kos.core.contracts.stores.retrieval.vector_search import (
+    VectorSearchProvider,
+    VectorSearchResults,
+)
+
+class MyVectorProvider(VectorSearchProvider):
+    async def search(self, ...) -> VectorSearchResults:
+        # Implementation
+        ...
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Agents" icon="robot" href="/architecture/agents">
+    Learn about the agent subsystem
+  </Card>
+  <Card title="Retrieval Plans" icon="route" href="/architecture/retrieval-plans">
+    See retrieval strategies
+  </Card>
+</CardGroup>

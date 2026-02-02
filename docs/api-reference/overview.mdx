@@ -1,0 +1,114 @@
+---
+title: "API Overview"
+description: "REST API endpoints for cogmem-kos"
+icon: "square-terminal"
+---
+
+# API Overview
+
+cogmem-kos exposes a REST API via FastAPI.
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+## Authentication
+
+<Note>
+Authentication is not implemented in v1. All endpoints are open.
+Future versions will support API keys and OAuth.
+</Note>
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/search` | Execute a search query |
+| `GET` | `/items/{id}` | Get an item with passages |
+| `POST` | `/items` | Create a new item |
+| `GET` | `/entities/{id}` | Get entity page |
+| `GET` | `/admin/health` | Health check |
+
+## Common Parameters
+
+### Tenant ID
+
+All queries require a `tenant_id` for multi-tenant isolation:
+
+```json
+{
+  "tenant_id": "my-tenant"
+}
+```
+
+### User ID
+
+Optional `user_id` for user-level scoping:
+
+```json
+{
+  "tenant_id": "my-tenant",
+  "user_id": "user-123"
+}
+```
+
+## Response Format
+
+All responses are JSON with consistent structure:
+
+### Success
+
+```json
+{
+  "hits": [...],
+  "total": 42,
+  "took_ms": 23
+}
+```
+
+### Error
+
+```json
+{
+  "detail": "Error message"
+}
+```
+
+## Rate Limits
+
+<Note>
+No rate limits in v1. Production deployments should add rate limiting via API gateway.
+</Note>
+
+## OpenAPI Spec
+
+The OpenAPI specification is available at:
+
+```
+http://localhost:8000/openapi.json
+```
+
+Interactive docs:
+
+```
+http://localhost:8000/docs
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Search" icon="magnifying-glass" href="/api-reference/search">
+    Search endpoint details
+  </Card>
+  <Card title="Items" icon="file" href="/api-reference/items">
+    Item CRUD operations
+  </Card>
+  <Card title="Entities" icon="diagram-project" href="/api-reference/entities">
+    Entity page endpoint
+  </Card>
+  <Card title="Health" icon="heart-pulse" href="/api-reference/health">
+    Health check endpoint
+  </Card>
+</CardGroup>

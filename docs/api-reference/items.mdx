@@ -1,0 +1,172 @@
+---
+title: "Items"
+description: "Item CRUD operations"
+icon: "file"
+---
+
+# Items
+
+Create and retrieve items (source documents).
+
+## Get Item
+
+Retrieve an item with its passages.
+
+### Endpoint
+
+```
+GET /items/{item_id}
+```
+
+### Path Parameters
+
+<ParamField path="item_id" type="string" required>
+  The item's kos_id
+</ParamField>
+
+### Example Request
+
+```bash
+curl http://localhost:8000/items/item-abc123
+```
+
+### Response
+
+```json
+{
+  "kos_id": "item-abc123",
+  "tenant_id": "demo",
+  "user_id": "user-1",
+  "source": "files",
+  "external_id": "doc-456",
+  "title": "Introduction to Machine Learning",
+  "content_text": "Machine learning is a subset of...",
+  "content_type": "article",
+  "created_at": "2025-01-15T10:30:00Z",
+  "updated_at": "2025-01-15T10:30:00Z",
+  "metadata": {},
+  "passages": [
+    {
+      "kos_id": "passage-1",
+      "text": "Machine learning is a subset of artificial intelligence...",
+      "sequence": 0,
+      "metadata": {}
+    },
+    {
+      "kos_id": "passage-2",
+      "text": "Key concepts include supervised learning...",
+      "sequence": 1,
+      "metadata": {}
+    }
+  ],
+  "entities": []
+}
+```
+
+## Create Item
+
+Create a new item and trigger processing.
+
+### Endpoint
+
+```
+POST /items
+```
+
+### Request Body
+
+<ParamField body="tenant_id" type="string" required>
+  Tenant identifier
+</ParamField>
+
+<ParamField body="user_id" type="string" required>
+  User identifier
+</ParamField>
+
+<ParamField body="source" type="string" required>
+  Source system (files, gmail, slack, notion, etc.)
+</ParamField>
+
+<ParamField body="title" type="string" required>
+  Document title
+</ParamField>
+
+<ParamField body="content_text" type="string" required>
+  Full text content
+</ParamField>
+
+<ParamField body="content_type" type="string" required>
+  Content type (article, email, note, etc.)
+</ParamField>
+
+<ParamField body="external_id" type="string">
+  ID in source system for deduplication
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Additional metadata
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/items \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "demo",
+    "user_id": "user-1",
+    "source": "files",
+    "title": "Introduction to Machine Learning",
+    "content_text": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.",
+    "content_type": "article",
+    "metadata": {
+      "author": "John Doe",
+      "category": "technology"
+    }
+  }'
+```
+
+### Response
+
+```json
+{
+  "kos_id": "item-abc123",
+  "tenant_id": "demo",
+  "user_id": "user-1",
+  "source": "files",
+  "external_id": null,
+  "title": "Introduction to Machine Learning",
+  "content_text": "Machine learning is a subset of...",
+  "content_type": "article",
+  "created_at": "2025-01-15T10:30:00Z",
+  "updated_at": "2025-01-15T10:30:00Z",
+  "metadata": {
+    "author": "John Doe",
+    "category": "technology"
+  },
+  "passages": [],
+  "entities": []
+}
+```
+
+<Note>
+After creation, an `ITEM_UPSERTED` event is emitted. The worker will:
+1. Chunk the item into passages
+2. Generate embeddings
+3. Index in text search
+4. Extract entities
+
+Passages will appear in subsequent GET requests after processing.
+</Note>
+
+## Source Types
+
+| Source | Description |
+|--------|-------------|
+| `files` | Uploaded files |
+| `gmail` | Gmail emails |
+| `slack` | Slack messages |
+| `notion` | Notion pages |
+| `gdrive` | Google Drive documents |
+| `github` | GitHub issues/PRs |
+| `other` | Other sources |

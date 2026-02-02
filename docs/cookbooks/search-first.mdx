@@ -1,0 +1,237 @@
+---
+title: "Search First"
+description: "Build a search application with cogmem-kos"
+icon: "magnifying-glass"
+---
+
+# Search First Cookbook
+
+Build a complete search application with highlights, facets, and entity expansion.
+
+## What You'll Build
+
+A search interface that:
+- Ingests documents
+- Returns highlighted results
+- Shows faceted filters
+- Displays related entities
+
+## Prerequisites
+
+- cogmem-kos installed and running
+- Python 3.12+
+- `httpx` for API calls
+
+```bash
+pip install httpx
+```
+
+## Step 1: Ingest Documents
+
+First, let's add some sample documents:
+
+```python
+import asyncio
+import httpx
+
+API_BASE = "http://localhost:8000"
+TENANT_ID = "demo"
+USER_ID = "user-1"
+
+DOCUMENTS = [
+    {
+        "title": "Introduction to Machine Learning",
+        "content_text": """
+        Machine learning is a subset of artificial intelligence that enables 
+        systems to learn and improve from experience. Dr. Andrew Ng from 
+        Stanford University has been instrumental in popularizing ML.
+        """,
+        "content_type": "article",
+        "source": "files",
+    },
+    {
+        "title": "Natural Language Processing",
+        "content_text": """
+        NLP is a branch of AI that helps computers understand human language.
+        Major breakthroughs include BERT from Google and GPT from OpenAI.
+        """,
+        "content_type": "article",
+        "source": "files",
+    },
+]
+
+async def ingest_documents():
+    async with httpx.AsyncClient() as client:
+        for doc in DOCUMENTS:
+            response = await client.post(
+                f"{API_BASE}/items",
+                json={
+                    "tenant_id": TENANT_ID,
+                    "user_id": USER_ID,
+                    **doc,
+                },
+            )
+            print(f"Created: {response.json()['kos_id']}")
+
+asyncio.run(ingest_documents())
+```
+
+## Step 2: Wait for Processing
+
+The worker needs to process the documents:
+
+```bash
+# In another terminal
+kos run-worker
+```
+
+Wait a few seconds for chunking and indexing.
+
+## Step 3: Search
+
+Now search for content:
+
+```python
+async def search(query: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{API_BASE}/search",
+            json={
+                "tenant_id": TENANT_ID,
+                "query": query,
+                "facets_requested": ["source", "content_type"],
+                "limit": 10,
+            },
+        )
+        return response.json()
+
+results = asyncio.run(search("machine learning"))
+
+# Display results
+print(f"Found {results['total']} results")
+for hit in results["hits"]:
+    print(f"\n{hit['title']} (score: {hit['score']:.2f})")
+    if hit["highlights"]:
+        print(f"  {hit['highlights'][0]}")
+```
+
+## Step 4: Display Facets
+
+Show faceted filters:
+
+```python
+for facet in results["facets"]:
+    print(f"\n{facet['field']}:")
+    for bucket in facet["buckets"]:
+        print(f"  {bucket['value']}: {bucket['count']}")
+```
+
+Output:
+```
+source:
+  files: 2
+
+content_type:
+  article: 2
+```
+
+## Step 5: Filter by Facet
+
+Apply a facet filter:
+
+```python
+async def search_filtered(query: str, filters: dict):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{API_BASE}/search",
+            json={
+                "tenant_id": TENANT_ID,
+                "query": query,
+                "filters": filters,
+                "limit": 10,
+            },
+        )
+        return response.json()
+
+# Only search in files
+results = asyncio.run(search_filtered(
+    "AI",
+    {"source": "files"}
+))
+```
+
+## Step 6: Show Related Entities
+
+Display entities mentioned in results:
+
+```python
+for entity in results.get("related_entities", []):
+    print(f"- {entity['name']} ({entity['type']})")
+```
+
+Output:
+```
+- Andrew Ng (person)
+- Stanford University (organization)
+- Google (organization)
+- OpenAI (organization)
+```
+
+## Complete Example
+
+```python
+import asyncio
+import httpx
+
+API_BASE = "http://localhost:8000"
+TENANT_ID = "demo"
+
+async def main():
+    async with httpx.AsyncClient() as client:
+        # Search
+        response = await client.post(
+            f"{API_BASE}/search",
+            json={
+                "tenant_id": TENANT_ID,
+                "query": "machine learning",
+                "facets_requested": ["source", "content_type"],
+                "limit": 10,
+            },
+        )
+        results = response.json()
+        
+        # Display
+        print(f"=== Search Results ({results['total']} total) ===\n")
+        
+        for hit in results["hits"]:
+            print(f"📄 {hit['title']}")
+            print(f"   Score: {hit['score']:.2f}")
+            if hit["highlights"]:
+                print(f"   {hit['highlights'][0][:100]}...")
+            print()
+        
+        print("=== Facets ===\n")
+        for facet in results["facets"]:
+            print(f"{facet['field']}:")
+            for bucket in facet["buckets"]:
+                print(f"  • {bucket['value']}: {bucket['count']}")
+            print()
+        
+        if results.get("related_entities"):
+            print("=== Related Entities ===\n")
+            for entity in results["related_entities"]:
+                print(f"  • {entity['name']} ({entity['type']})")
+
+asyncio.run(main())
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Entity Pages" icon="book" href="/cookbooks/entity-pages">
+    Build entity detail views
+  </Card>
+  <Card title="Integrations" icon="puzzle-piece" href="/cookbooks/integrations">
+    Connect to AI frameworks
+  </Card>
+</CardGroup>

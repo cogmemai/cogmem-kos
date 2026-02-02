@@ -1,0 +1,200 @@
+---
+title: "Entities"
+description: "Entity page endpoint"
+icon: "diagram-project"
+---
+
+# Entities
+
+Retrieve entity pages (Wikipedia-style views).
+
+## Get Entity Page
+
+Get an entity with its facts, evidence, and related entities.
+
+### Endpoint
+
+```
+GET /entities/{entity_id}
+```
+
+### Path Parameters
+
+<ParamField path="entity_id" type="string" required>
+  The entity's kos_id
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="tenant_id" type="string" required>
+  Tenant identifier
+</ParamField>
+
+<ParamField query="user_id" type="string">
+  Optional user identifier
+</ParamField>
+
+<ParamField query="evidence_limit" type="integer" default="10">
+  Maximum evidence snippets to return (1-50)
+</ParamField>
+
+### Example Request
+
+```bash
+curl "http://localhost:8000/entities/entity-abc123?tenant_id=demo&evidence_limit=5"
+```
+
+### Response
+
+<ResponseField name="entity" type="object">
+  The entity node
+  
+  <Expandable title="Entity object">
+    <ResponseField name="kos_id" type="string">
+      Unique identifier
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Entity name
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      Entity type (person, organization, etc.)
+    </ResponseField>
+    <ResponseField name="properties" type="object">
+      Additional properties
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="summary" type="string">
+  Generated summary (if available)
+</ResponseField>
+
+<ResponseField name="facts" type="array">
+  Known relationships
+  
+  <Expandable title="Fact object">
+    <ResponseField name="predicate" type="string">
+      Relationship type
+    </ResponseField>
+    <ResponseField name="object_id" type="string">
+      Related entity ID
+    </ResponseField>
+    <ResponseField name="object_name" type="string">
+      Related entity name
+    </ResponseField>
+    <ResponseField name="object_type" type="string">
+      Related entity type
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="evidence_snippets" type="array">
+  Passages mentioning this entity
+  
+  <Expandable title="Evidence object">
+    <ResponseField name="passage_id" type="string">
+      Passage ID
+    </ResponseField>
+    <ResponseField name="text" type="string">
+      Passage text
+    </ResponseField>
+    <ResponseField name="source_item_id" type="string">
+      Source item ID
+    </ResponseField>
+    <ResponseField name="source_title" type="string">
+      Source document title
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="related_entities" type="array">
+  Connected entities
+</ResponseField>
+
+<ResponseField name="timeline" type="array">
+  Temporal events (if available)
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "entity": {
+    "kos_id": "entity-abc123",
+    "name": "Andrew Ng",
+    "type": "person",
+    "properties": {
+      "tenant_id": "demo"
+    }
+  },
+  "summary": "Andrew Ng is a computer scientist and entrepreneur known for his work in machine learning and AI education.",
+  "facts": [
+    {
+      "predicate": "works_at",
+      "object_id": "entity-stanford",
+      "object_name": "Stanford University",
+      "object_type": "organization"
+    },
+    {
+      "predicate": "founded",
+      "object_id": "entity-coursera",
+      "object_name": "Coursera",
+      "object_type": "organization"
+    }
+  ],
+  "evidence_snippets": [
+    {
+      "passage_id": "passage-123",
+      "text": "Dr. Andrew Ng from Stanford University has been instrumental in popularizing machine learning through his online courses.",
+      "source_item_id": "item-456",
+      "source_title": "Introduction to Machine Learning"
+    }
+  ],
+  "related_entities": [
+    {
+      "kos_id": "entity-stanford",
+      "name": "Stanford University",
+      "type": "organization",
+      "properties": {}
+    }
+  ],
+  "timeline": []
+}
+```
+
+## Entity Types
+
+| Type | Description |
+|------|-------------|
+| `person` | Individual person |
+| `organization` | Company, institution, group |
+| `location` | Place, city, country |
+| `project` | Project or initiative |
+| `concept` | Abstract concept or topic |
+| `technology` | Technology or tool |
+| `event` | Event or occurrence |
+| `product` | Product or service |
+| `date` | Date or time period |
+| `other` | Other entity types |
+
+## Error Responses
+
+### 404 Not Found
+
+```json
+{
+  "detail": "Entity not found"
+}
+```
+
+### 503 Service Unavailable
+
+```json
+{
+  "detail": "Entity graph not available. Neo4j provider not configured."
+}
+```
+
+<Note>
+The entity page endpoint requires the graph provider (Neo4j in enterprise mode, SurrealDB in solo mode).
+</Note>

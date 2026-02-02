@@ -1,0 +1,210 @@
+---
+title: "Quick Start"
+description: "Get cogmem-kos running in 5 minutes"
+icon: "rocket"
+---
+
+# Quick Start
+
+Get cogmem-kos up and running with your first search query.
+
+## Prerequisites
+
+- Python 3.12+
+- Docker (for databases)
+
+## Installation
+
+<CodeGroup>
+```bash pip
+pip install cogmem-kos[enterprise]
+```
+
+```bash poetry
+poetry add cogmem-kos[enterprise]
+```
+
+```bash uv
+uv add cogmem-kos[enterprise]
+```
+</CodeGroup>
+
+For solo mode (SurrealDB only):
+
+```bash
+pip install cogmem-kos[solo]
+```
+
+## Start Infrastructure
+
+<Tabs>
+  <Tab title="Enterprise Mode">
+    Start the required databases:
+
+    ```bash
+    # Postgres
+    docker run -d --name kos-postgres \
+      -e POSTGRES_USER=kos \
+      -e POSTGRES_PASSWORD=kos \
+      -e POSTGRES_DB=cogmem_kos \
+      -p 5432:5432 \
+      postgres:16
+
+    # OpenSearch
+    docker run -d --name kos-opensearch \
+      -e "discovery.type=single-node" \
+      -e "DISABLE_SECURITY_PLUGIN=true" \
+      -p 9200:9200 \
+      opensearchproject/opensearch:2
+
+    # Neo4j (optional for entity graph)
+    docker run -d --name kos-neo4j \
+      -e NEO4J_AUTH=neo4j/password \
+      -p 7687:7687 -p 7474:7474 \
+      neo4j:5
+
+    # Qdrant (optional for vector search)
+    docker run -d --name kos-qdrant \
+      -p 6333:6333 \
+      qdrant/qdrant
+    ```
+  </Tab>
+  <Tab title="Solo Mode">
+    Start SurrealDB only:
+
+    ```bash
+    docker run -d --name kos-surrealdb \
+      -p 8000:8000 \
+      surrealdb/surrealdb:latest \
+      start --user root --pass root memory
+    ```
+  </Tab>
+</Tabs>
+
+## Configure Environment
+
+Create a `.env` file:
+
+<Tabs>
+  <Tab title="Enterprise Mode">
+    ```bash .env
+    KOS_MODE=enterprise
+
+    POSTGRES_DSN=postgresql+asyncpg://kos:kos@localhost:5432/cogmem_kos
+    OPENSEARCH_URL=http://localhost:9200
+    NEO4J_URI=bolt://localhost:7687
+    NEO4J_USER=neo4j
+    NEO4J_PASSWORD=password
+    QDRANT_URL=http://localhost:6333
+
+    API_HOST=0.0.0.0
+    API_PORT=8000
+    ```
+  </Tab>
+  <Tab title="Solo Mode">
+    ```bash .env
+    KOS_MODE=solo
+
+    SURREALDB_URL=ws://localhost:8000/rpc
+    SURREALDB_NAMESPACE=cogmem
+    SURREALDB_DATABASE=kos
+    SURREALDB_USER=root
+    SURREALDB_PASSWORD=root
+
+    API_HOST=0.0.0.0
+    API_PORT=8000
+    ```
+  </Tab>
+</Tabs>
+
+## Initialize Schema
+
+```bash
+kos init
+```
+
+This creates all required tables and indices.
+
+## Start the Server
+
+```bash
+kos dev-server
+```
+
+The API is now running at `http://localhost:8000`.
+
+## Your First Search
+
+### 1. Create an Item
+
+```bash
+curl -X POST http://localhost:8000/items \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "demo",
+    "user_id": "user1",
+    "source": "files",
+    "title": "Introduction to Machine Learning",
+    "content_text": "Machine learning is a subset of artificial intelligence that enables systems to learn from data.",
+    "content_type": "article"
+  }'
+```
+
+### 2. Start the Worker
+
+In another terminal, start the worker to process the item:
+
+```bash
+kos run-worker
+```
+
+The worker will chunk the item and index it for search.
+
+### 3. Search
+
+```bash
+curl -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "demo",
+    "query": "machine learning",
+    "limit": 10
+  }'
+```
+
+You'll get results with highlights and facets:
+
+```json
+{
+  "hits": [
+    {
+      "kos_id": "abc123",
+      "title": "Introduction to Machine Learning",
+      "snippet": "Machine learning is a subset of...",
+      "highlights": ["<em>Machine learning</em> is a subset..."],
+      "score": 1.5
+    }
+  ],
+  "facets": [
+    {"field": "source", "buckets": [{"value": "files", "count": 1}]}
+  ],
+  "total": 1
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/platform/configuration">
+    Configure providers and settings
+  </Card>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
+    Explore all endpoints
+  </Card>
+  <Card title="Search First Cookbook" icon="magnifying-glass" href="/cookbooks/search-first">
+    Build a search application
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
+    Understand the system design
+  </Card>
+</CardGroup>

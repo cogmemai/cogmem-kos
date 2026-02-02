@@ -1,0 +1,193 @@
+---
+title: "Solo Mode"
+description: "Run cogmem-kos with SurrealDB only"
+icon: "user"
+---
+
+# Solo Mode
+
+Solo mode allows cogmem-kos to run using **SurrealDB only**, providing a simpler deployment option.
+
+## Overview
+
+| Mode | Databases | Best For |
+|------|-----------|----------|
+| **Enterprise** | Postgres + OpenSearch + Neo4j + Qdrant | Production, high-scale |
+| **Solo** | SurrealDB only | Development, small deployments |
+
+## Capabilities
+
+In solo mode, SurrealDB provides all capabilities:
+
+| Capability | Enterprise Provider | Solo Provider |
+|------------|---------------------|---------------|
+| Object Storage | Postgres | SurrealDB |
+| Event Queue | Postgres | SurrealDB |
+| Text Search | OpenSearch | SurrealDB (full-text) |
+| Vector Search | Qdrant | SurrealDB (cosine similarity) |
+| Graph | Neo4j | SurrealDB (RELATE edges) |
+
+### Limitations
+
+Solo mode has some limitations compared to enterprise:
+
+<Warning>
+- **Text Search**: No built-in highlighting (simulated), limited faceting
+- **Vector Search**: Performance may be lower for large datasets
+- **Graph**: No APOC procedures, simpler traversal
+</Warning>
+
+## Setup
+
+### 1. Install Dependencies
+
+```bash
+pip install cogmem-kos[solo]
+```
+
+### 2. Start SurrealDB
+
+```bash
+# In-memory (development)
+docker run -d --name kos-surrealdb \
+  -p 8000:8000 \
+  surrealdb/surrealdb:latest \
+  start --user root --pass root memory
+
+# Persistent storage
+docker run -d --name kos-surrealdb \
+  -p 8000:8000 \
+  -v ./data:/data \
+  surrealdb/surrealdb:latest \
+  start --user root --pass root file:/data/cogmem.db
+```
+
+### 3. Configure Environment
+
+```bash .env
+KOS_MODE=solo
+
+SURREALDB_URL=ws://localhost:8000/rpc
+SURREALDB_NAMESPACE=cogmem
+SURREALDB_DATABASE=kos
+SURREALDB_USER=root
+SURREALDB_PASSWORD=root
+```
+
+### 4. Initialize Schema
+
+```bash
+kos init
+```
+
+Or explicitly:
+
+```bash
+kos init --mode solo
+```
+
+### 5. Start Services
+
+```bash
+# API server
+kos dev-server
+
+# Worker (in another terminal)
+kos run-worker
+```
+
+## Schema
+
+Solo mode creates these tables in SurrealDB:
+
+### Document Tables
+
+| Table | Description |
+|-------|-------------|
+| `items` | Ingested documents |
+| `passages` | Chunked text with embeddings |
+| `entities` | Extracted named entities |
+| `artifacts` | Generated content |
+| `agent_actions` | Agent provenance logs |
+| `outbox_events` | Event queue |
+
+### Graph Edges
+
+| Edge | Description |
+|------|-------------|
+| `mentions` | Passage → Entity |
+| `has_passage` | Item → Passage |
+| `related_to` | Entity → Entity |
+
+## API Compatibility
+
+All API endpoints work identically in solo mode:
+
+```bash
+# Search
+curl -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{"tenant_id": "demo", "query": "machine learning"}'
+
+# Entity page
+curl http://localhost:8000/entities/entity-123?tenant_id=demo
+
+# Health check
+curl http://localhost:8000/admin/health
+```
+
+## Switching Modes
+
+To switch from solo to enterprise:
+
+1. Update `KOS_MODE=enterprise` in `.env`
+2. Configure enterprise database connections
+3. Run `kos init` to create schema
+4. Data migration is manual (not provided in v1)
+
+## Troubleshooting
+
+<Accordion title="Connection Errors">
+```
+SurrealDB error: Connection refused
+```
+
+Ensure SurrealDB is running:
+```bash
+docker ps | grep surrealdb
+docker start kos-surrealdb
+```
+</Accordion>
+
+<Accordion title="Schema Errors">
+```
+Table 'items' already exists
+```
+
+Use `--force` to recreate:
+```bash
+kos init --mode solo --force
+```
+</Accordion>
+
+<Accordion title="Import Errors">
+```
+ImportError: surrealdb not installed
+```
+
+Install solo dependencies:
+```bash
+pip install cogmem-kos[solo]
+```
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Run your first search
+  </Card>
+  <Card title="Configuration" icon="gear" href="/platform/configuration">
+    Full configuration reference
+  </Card>
+</CardGroup>

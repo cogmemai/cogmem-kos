@@ -1,0 +1,221 @@
+---
+title: "Contracts"
+description: "Core interfaces that providers implement"
+icon: "file-contract"
+---
+
+# Contracts
+
+Contracts are abstract interfaces that define capabilities without importing specific database clients.
+
+## Design Rules
+
+<Note>
+Core contracts must NOT import:
+- `opensearch` / `neo4j` / `qdrant` / `surrealdb` client packages
+- `langchain` / `crewai` / `autogen` frameworks
+- `fastapi`
+</Note>
+
+## Store Contracts
+
+### ObjectStore
+
+CRUD operations for domain objects:
+
+```python
+class ObjectStore(ABC):
+    # Items
+    async def save_item(self, item: Item) -> Item
+    async def get_item(self, kos_id: KosId) -> Item | None
+    async def get_items(self, kos_ids: list[KosId]) -> list[Item]
+    async def delete_item(self, kos_id: KosId) -> bool
+    
+    # Passages
+    async def save_passage(self, passage: Passage) -> Passage
+    async def get_passage(self, kos_id: KosId) -> Passage | None
+    async def get_passages_for_item(self, item_id: KosId) -> list[Passage]
+    
+    # Entities
+    async def save_entity(self, entity: Entity) -> Entity
+    async def get_entity(self, kos_id: KosId) -> Entity | None
+    async def find_entity_by_name(self, tenant_id, name) -> Entity | None
+    
+    # Artifacts
+    async def save_artifact(self, artifact: Artifact) -> Artifact
+    async def get_artifact(self, kos_id: KosId) -> Artifact | None
+```
+
+### OutboxStore
+
+Event queue for agent communication:
+
+```python
+class OutboxStore(ABC):
+    async def enqueue_event(self, event: OutboxEvent) -> OutboxEvent
+    async def dequeue_events(self, event_types: list[str], limit: int) -> list[OutboxEvent]
+    async def mark_complete(self, event_id: str) -> bool
+    async def mark_failed(self, event_id: str, error: str) -> bool
+```
+
+### AdminStore
+
+Tenant and configuration management:
+
+```python
+class AdminStore(ABC):
+    # Tenants
+    async def create_tenant(self, tenant: Tenant) -> Tenant
+    async def get_tenant(self, tenant_id: str) -> Tenant | None
+    
+    # Users
+    async def create_user(self, user: User) -> User
+    async def get_user(self, user_id: str) -> User | None
+    
+    # Connector configs
+    async def save_connector_config(self, config: ConnectorConfig) -> ConnectorConfig
+    
+    # Run logs
+    async def log_run(self, log: RunLog) -> RunLog
+```
+
+## Retrieval Contracts
+
+### TextSearchProvider
+
+Full-text search with highlights and facets:
+
+```python
+class TextSearchProvider(ABC):
+    async def search(
+        self,
+        query: str,
+        tenant_id: str,
+        user_id: str | None = None,
+        filters: dict[str, Any] | None = None,
+        facets: list[str] | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> TextSearchResults
+    
+    async def index_passage(
+        self,
+        kos_id: str,
+        tenant_id: str,
+        user_id: str,
+        item_id: str,
+        text: str,
+        title: str | None = None,
+        source: str | None = None,
+        ...
+    ) -> bool
+```
+
+### VectorSearchProvider
+
+Embedding similarity search:
+
+```python
+class VectorSearchProvider(ABC):
+    async def search(
+        self,
+        query_text: str | None = None,
+        embedding: list[float] | None = None,
+        tenant_id: str | None = None,
+        filters: dict[str, Any] | None = None,
+        limit: int = 20,
+    ) -> VectorSearchResults
+    
+    async def upsert(
+        self,
+        kos_id: str,
+        embedding: list[float],
+        tenant_id: str,
+        user_id: str,
+        item_id: str,
+        ...
+    ) -> bool
+```
+
+### GraphSearchProvider
+
+Entity graph traversal:
+
+```python
+class GraphSearchProvider(ABC):
+    async def expand(
+        self,
+        seed_ids: list[str],
+        hops: int = 1,
+        edge_types: list[str] | None = None,
+        limit: int = 100,
+    ) -> Subgraph
+    
+    async def entity_page(
+        self,
+        entity_id: str,
+        evidence_limit: int = 10,
+    ) -> EntityPagePayload
+    
+    async def create_entity_node(...) -> bool
+    async def create_mentions_edge(...) -> bool
+    async def create_related_to_edge(...) -> bool
+```
+
+## LLM Contracts
+
+### LLMGateway
+
+LLM completion interface:
+
+```python
+class LLMGateway(ABC):
+    async def generate(
+        self,
+        messages: list[dict[str, Any]],
+        model: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int | None = None,
+        json_schema: dict[str, Any] | None = None,
+        tools: list[dict[str, Any]] | None = None,
+    ) -> LLMResponse
+```
+
+### EmbedderBase
+
+Embedding generation:
+
+```python
+class EmbedderBase(ABC):
+    @property
+    def dimensions(self) -> int
+    
+    async def embed(self, texts: list[str]) -> list[list[float]]
+    
+    async def embed_single(self, text: str) -> list[float]
+```
+
+### RerankerBase
+
+Cross-encoder reranking:
+
+```python
+class RerankerBase(ABC):
+    async def rerank(
+        self,
+        query: str,
+        candidates: list[str],
+        top_k: int | None = None,
+    ) -> list[RankedCandidate]
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Providers" icon="database" href="/architecture/providers">
+    See provider implementations
+  </Card>
+  <Card title="Agents" icon="robot" href="/architecture/agents">
+    Learn about agents
+  </Card>
+</CardGroup>

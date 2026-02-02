@@ -1,0 +1,97 @@
+---
+title: "Platform Overview"
+description: "Understanding cogmem-kos deployment modes and architecture"
+icon: "server"
+---
+
+# Platform Overview
+
+cogmem-kos is designed to run in two modes, giving you flexibility between simplicity and scale.
+
+## Deployment Modes
+
+<CardGroup cols={2}>
+  <Card title="Enterprise Mode" icon="building">
+    **Best-of-breed databases** for production workloads
+    
+    - Postgres for admin and object storage
+    - OpenSearch for text search with highlights
+    - Neo4j for entity graph
+    - Qdrant for vector embeddings
+  </Card>
+  <Card title="Solo Mode" icon="user">
+    **Single database** for development and small deployments
+    
+    - SurrealDB provides all capabilities
+    - Simpler setup and operations
+    - Perfect for prototyping
+  </Card>
+</CardGroup>
+
+## Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    API Layer                            │
+│              FastAPI + MCP Server                       │
+├─────────────────────────────────────────────────────────┤
+│                  Retrieval Plans                        │
+│     SearchFirst │ WikipediaPage │ SemanticFirst        │
+├─────────────────────────────────────────────────────────┤
+│                    Contracts                            │
+│  ObjectStore │ TextSearch │ VectorSearch │ GraphSearch │
+├─────────────────────────────────────────────────────────┤
+│                    Providers                            │
+│   Postgres │ OpenSearch │ Neo4j │ Qdrant │ SurrealDB   │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Key Components
+
+### Core Models
+
+| Model | Description |
+|-------|-------------|
+| **Item** | Source document (email, file, note) |
+| **Passage** | Chunked text from an item |
+| **Entity** | Named entity (person, org, concept) |
+| **Artifact** | Generated content (summary, entity page) |
+
+### Contracts
+
+Abstract interfaces that providers implement:
+
+- **ObjectStore** - CRUD for domain objects
+- **OutboxStore** - Event queue for agents
+- **TextSearchProvider** - Full-text search with highlights
+- **VectorSearchProvider** - Embedding similarity search
+- **GraphSearchProvider** - Entity graph traversal
+
+### Agents
+
+Event-driven workers that process data:
+
+- **ChunkAgent** - Splits items into passages
+- **EmbedAgent** - Generates embeddings
+- **IndexTextAgent** - Indexes in OpenSearch
+- **EntityExtractAgent** - Extracts named entities
+- **WikipediaPageAgent** - Builds entity pages
+
+## Multi-Tenancy
+
+cogmem-kos is multi-tenant by design:
+
+- Every object has a `tenant_id`
+- Queries are scoped to tenant
+- Optional `user_id` for user-level isolation
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/platform/installation">
+    Install cogmem-kos
+  </Card>
+  <Card title="Configuration" icon="gear" href="/platform/configuration">
+    Configure your deployment
+  </Card>
+</CardGroup>

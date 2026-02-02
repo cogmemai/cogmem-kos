@@ -1,0 +1,92 @@
+---
+title: "Health Check"
+description: "Check system health"
+icon: "heart-pulse"
+---
+
+# Health Check
+
+Check connectivity to all providers.
+
+## Endpoint
+
+```
+GET /admin/health
+```
+
+## Example Request
+
+```bash
+curl http://localhost:8000/admin/health
+```
+
+## Response
+
+<ResponseField name="status" type="string">
+  Overall status: `healthy` or `degraded`
+</ResponseField>
+
+<ResponseField name="providers" type="object">
+  Status of each provider
+</ResponseField>
+
+## Example Response (Healthy)
+
+```json
+{
+  "status": "healthy",
+  "providers": {
+    "postgres": "healthy",
+    "opensearch": "healthy"
+  }
+}
+```
+
+## Example Response (Degraded)
+
+```json
+{
+  "status": "degraded",
+  "providers": {
+    "postgres": "healthy",
+    "opensearch": "error: Connection refused"
+  }
+}
+```
+
+## Provider Status Values
+
+| Status | Description |
+|--------|-------------|
+| `healthy` | Provider is connected and responding |
+| `unhealthy` | Provider is not responding |
+| `error: <message>` | Provider returned an error |
+
+## Use Cases
+
+### Kubernetes Liveness Probe
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /admin/health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 30
+```
+
+### Load Balancer Health Check
+
+Configure your load balancer to check `/admin/health` and route traffic only to healthy instances.
+
+### Monitoring
+
+Poll the health endpoint and alert when status is `degraded`:
+
+```bash
+#!/bin/bash
+STATUS=$(curl -s http://localhost:8000/admin/health | jq -r '.status')
+if [ "$STATUS" != "healthy" ]; then
+  echo "ALERT: cogmem-kos is degraded"
+fi
+```

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "cogmem-kos",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "icon": "book",
+        "groups": [
+          {
+            "group": "Start Here",
+            "icon": "rocket",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Platform",
+            "icon": "server",
+            "pages": [
+              "platform/overview",
+              "platform/installation",
+              "platform/configuration",
+              "platform/solo-mode"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "icon": "sitemap",
+            "pages": [
+              "architecture/overview",
+              "architecture/contracts",
+              "architecture/providers",
+              "architecture/agents",
+              "architecture/retrieval-plans"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "icon": "square-terminal",
+        "groups": [
+          {
+            "group": "Endpoints",
+            "icon": "plug",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/search",
+              "api-reference/items",
+              "api-reference/entities",
+              "api-reference/health"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Cookbooks",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Tutorials",
+            "icon": "graduation-cap",
+            "pages": [
+              "cookbooks/overview",
+              "cookbooks/search-first",
+              "cookbooks/entity-pages",
+              "cookbooks/integrations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

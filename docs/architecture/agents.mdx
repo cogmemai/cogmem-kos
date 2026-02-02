@@ -1,0 +1,221 @@
+---
+title: "Agents"
+description: "Event-driven agent subsystem"
+icon: "robot"
+---
+
+# Agents
+
+Agents are event-driven workers that process data through the pipeline.
+
+## Design Principles
+
+<CardGroup cols={2}>
+  <Card title="Event-Driven" icon="bolt">
+    Agents consume events from the outbox and emit new events
+  </Card>
+  <Card title="Idempotent" icon="repeat">
+    Operations can be safely retried on failure
+  </Card>
+  <Card title="Provenance" icon="clock-rotate-left">
+    Every action is logged for traceability
+  </Card>
+  <Card title="Composable" icon="puzzle-piece">
+    Agents can be chained via event types
+  </Card>
+</CardGroup>
+
+## Event Types
+
+```python
+class EventType(str, Enum):
+    ITEM_UPSERTED = "item_upserted"
+    ITEM_DELETED = "item_deleted"
+    PASSAGES_CREATED = "passages_created"
+    ENTITIES_EXTRACTED = "entities_extracted"
+    VECTORS_CREATED = "vectors_created"
+    TEXT_INDEXED = "text_indexed"
+    ENTITY_PAGE_DIRTY = "entity_page_dirty"
+```
+
+## Core Agents
+
+### ChunkAgent
+
+Splits items into passages.
+
+| Property | Value |
+|----------|-------|
+| **Consumes** | `ITEM_UPSERTED` |
+| **Emits** | `PASSAGES_CREATED` |
+| **Writes to** | ObjectStore (passages) |
+
+```python
+from kos.agents.ingest.chunk_agent import ChunkAgent
+
+agent = ChunkAgent(
+    object_store=object_store,
+    outbox_store=outbox_store,
+    chunk_size=500,
+    chunk_overlap=50,
+)
+```
+
+### EmbedAgent
+
+Generates embeddings for passages.
+
+| Property | Value |
+|----------|-------|
+| **Consumes** | `PASSAGES_CREATED` |
+| **Emits** | `VECTORS_CREATED` |
+| **Writes to** | VectorSearchProvider |
+
+```python
+from kos.agents.enrich.embed_agent import EmbedAgent
+
+agent = EmbedAgent(
+    object_store=object_store,
+    outbox_store=outbox_store,
+    vector_search=vector_search,
+    embedder=embedder,
+    batch_size=32,
+)
+```
+
+### IndexTextAgent
+
+Indexes passages in text search.
+
+| Property | Value |
+|----------|-------|
+| **Consumes** | `PASSAGES_CREATED` |
+| **Emits** | `TEXT_INDEXED` |
+| **Writes to** | TextSearchProvider |
+
+```python
+from kos.agents.index.index_text_agent import IndexTextAgent
+
+agent = IndexTextAgent(
+    object_store=object_store,
+    outbox_store=outbox_store,
+    text_search=text_search,
+)
+```
+
+### EntityExtractAgent
+
+Extracts named entities from passages.
+
+| Property | Value |
+|----------|-------|
+| **Consumes** | `PASSAGES_CREATED` |
+| **Emits** | `ENTITIES_EXTRACTED` |
+| **Writes to** | ObjectStore (entities), GraphSearchProvider |
+
+```python
+from kos.agents.extract.entity_extract_agent import EntityExtractAgent
+
+agent = EntityExtractAgent(
+    object_store=object_store,
+    outbox_store=outbox_store,
+    graph_search=graph_search,
+    llm_gateway=llm_gateway,  # Optional
+    use_llm=True,
+)
+```
+
+### WikipediaPageAgent
+
+Builds entity page artifacts.
+
+| Property | Value |
+|----------|-------|
+| **Consumes** | `ENTITY_PAGE_DIRTY` |
+| **Emits** | None |
+| **Writes to** | ObjectStore (artifacts) |
+
+```python
+from kos.agents.curate.wikipedia_page_agent import WikipediaPageAgent
+
+agent = WikipediaPageAgent(
+    object_store=object_store,
+    outbox_store=outbox_store,
+    graph_search=graph_search,
+    llm_gateway=llm_gateway,  # Optional for summaries
+)
+```
+
+## Agent Pipeline
+
+```
+ITEM_UPSERTED
+     │
+     ▼
+┌─────────────┐
+│ ChunkAgent  │
+└─────────────┘
+     │
+     ▼
+PASSAGES_CREATED
+     │
+     ├──────────────────┬──────────────────┐
+     ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌──────────────────┐
+│ EmbedAgent  │  │ IndexText   │  │ EntityExtract    │
+└─────────────┘  └─────────────┘  └──────────────────┘
+     │                  │                  │
+     ▼                  ▼                  ▼
+VECTORS_CREATED   TEXT_INDEXED    ENTITIES_EXTRACTED
+```
+
+## Running Workers
+
+```bash
+# Start worker to process all events
+kos run-worker
+
+# With options
+kos run-worker --poll-interval 1.0 --batch-size 10
+```
+
+## Creating Custom Agents
+
+```python
+from kos.agents.base import BaseAgent
+from kos.core.events.event_types import EventType
+from kos.core.events.envelope import EventEnvelope
+
+class MyCustomAgent(BaseAgent):
+    agent_id = "my_custom_agent"
+    consumes_events = [EventType.PASSAGES_CREATED]
+    
+    async def process_event(self, event: EventEnvelope) -> list[EventEnvelope]:
+        # Process the event
+        passage_ids = event.payload.get("passage_ids", [])
+        
+        # Do work...
+        
+        # Log action for provenance
+        await self.log_action(
+            tenant_id=event.tenant_id,
+            user_id=event.payload.get("user_id"),
+            action_type="my_action",
+            inputs=passage_ids,
+            outputs=["output-1"],
+        )
+        
+        # Optionally emit new events
+        return []
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Retrieval Plans" icon="route" href="/architecture/retrieval-plans">
+    See how agents feed retrieval
+  </Card>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
+    Explore the API
+  </Card>
+</CardGroup>

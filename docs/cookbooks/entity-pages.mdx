@@ -1,0 +1,210 @@
+---
+title: "Entity Pages"
+description: "Build Wikipedia-style entity views"
+icon: "book"
+---
+
+# Entity Pages Cookbook
+
+Create rich entity pages with facts, evidence, and related entities.
+
+## What You'll Build
+
+An entity detail view that shows:
+- Entity information
+- Known relationships (facts)
+- Evidence snippets from documents
+- Related entities
+
+## Prerequisites
+
+- cogmem-kos with Neo4j (enterprise) or SurrealDB (solo)
+- Documents ingested and processed
+- Entities extracted by the worker
+
+## Step 1: Find Entities
+
+First, search to discover entities:
+
+```python
+import asyncio
+import httpx
+
+API_BASE = "http://localhost:8000"
+TENANT_ID = "demo"
+
+async def find_entities(query: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{API_BASE}/search",
+            json={
+                "tenant_id": TENANT_ID,
+                "query": query,
+                "limit": 5,
+            },
+        )
+        results = response.json()
+        return results.get("related_entities", [])
+
+entities = asyncio.run(find_entities("Stanford"))
+for e in entities:
+    print(f"{e['name']} ({e['type']}) - ID: {e['kos_id']}")
+```
+
+## Step 2: Get Entity Page
+
+Fetch the full entity page:
+
+```python
+async def get_entity_page(entity_id: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{API_BASE}/entities/{entity_id}",
+            params={"tenant_id": TENANT_ID},
+        )
+        return response.json()
+
+page = asyncio.run(get_entity_page("entity-abc123"))
+```
+
+## Step 3: Display Entity Info
+
+```python
+def display_entity_page(page):
+    entity = page["entity"]
+    
+    print(f"# {entity.get('name', 'Unknown')}")
+    print(f"Type: {entity.get('type', 'unknown')}")
+    print()
+    
+    # Summary
+    if page.get("summary"):
+        print("## Summary")
+        print(page["summary"])
+        print()
+    
+    # Facts
+    if page.get("facts"):
+        print(f"## Relationships ({len(page['facts'])})")
+        for fact in page["facts"]:
+            print(f"  • {fact['predicate']}: {fact['object_name']}")
+        print()
+    
+    # Evidence
+    if page.get("evidence_snippets"):
+        print(f"## Evidence ({len(page['evidence_snippets'])} snippets)")
+        for snippet in page["evidence_snippets"][:3]:
+            text = snippet["text"][:100] + "..." if len(snippet["text"]) > 100 else snippet["text"]
+            print(f"  • {text}")
+            if snippet.get("source_title"):
+                print(f"    Source: {snippet['source_title']}")
+        print()
+    
+    # Related
+    if page.get("related_entities"):
+        print(f"## Related Entities ({len(page['related_entities'])})")
+        for related in page["related_entities"]:
+            print(f"  • {related.get('name')} ({related.get('type')})")
+
+display_entity_page(page)
+```
+
+## Step 4: Build a Web View
+
+Create an HTML template for the entity page:
+
+```python
+def render_entity_html(page):
+    entity = page["entity"]
+    
+    html = f"""
+    <div class="entity-page">
+        <h1>{entity.get('name', 'Unknown')}</h1>
+        <span class="entity-type">{entity.get('type', 'unknown')}</span>
+        
+        {'<div class="summary">' + page["summary"] + '</div>' if page.get("summary") else ''}
+        
+        <h2>Relationships</h2>
+        <ul class="facts">
+            {''.join(f'<li><strong>{f["predicate"]}</strong>: {f["object_name"]}</li>' for f in page.get("facts", []))}
+        </ul>
+        
+        <h2>Evidence</h2>
+        <div class="evidence">
+            {''.join(f'''
+                <div class="snippet">
+                    <p>{s["text"][:200]}...</p>
+                    <cite>{s.get("source_title", "Unknown source")}</cite>
+                </div>
+            ''' for s in page.get("evidence_snippets", [])[:5])}
+        </div>
+        
+        <h2>Related</h2>
+        <div class="related">
+            {''.join(f'<a href="/entities/{r["kos_id"]}">{r.get("name")}</a>' for r in page.get("related_entities", []))}
+        </div>
+    </div>
+    """
+    return html
+```
+
+## Complete Example
+
+```python
+import asyncio
+import httpx
+
+API_BASE = "http://localhost:8000"
+TENANT_ID = "demo"
+
+async def main():
+    async with httpx.AsyncClient() as client:
+        # Find entities
+        search_response = await client.post(
+            f"{API_BASE}/search",
+            json={"tenant_id": TENANT_ID, "query": "Stanford", "limit": 5},
+        )
+        entities = search_response.json().get("related_entities", [])
+        
+        if not entities:
+            print("No entities found. Make sure documents are processed.")
+            return
+        
+        # Get first entity page
+        entity_id = entities[0]["kos_id"]
+        page_response = await client.get(
+            f"{API_BASE}/entities/{entity_id}",
+            params={"tenant_id": TENANT_ID},
+        )
+        page = page_response.json()
+        
+        # Display
+        entity = page["entity"]
+        print(f"{'='*50}")
+        print(f"  {entity.get('name', 'Unknown')}")
+        print(f"  Type: {entity.get('type')}")
+        print(f"{'='*50}")
+        
+        if page.get("facts"):
+            print("\nRelationships:")
+            for fact in page["facts"][:5]:
+                print(f"  → {fact['predicate']}: {fact['object_name']}")
+        
+        if page.get("evidence_snippets"):
+            print("\nEvidence:")
+            for snippet in page["evidence_snippets"][:3]:
+                print(f"  \"{snippet['text'][:80]}...\"")
+
+asyncio.run(main())
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Search First" icon="magnifying-glass" href="/cookbooks/search-first">
+    Build search interfaces
+  </Card>
+  <Card title="Integrations" icon="puzzle-piece" href="/cookbooks/integrations">
+    Connect to AI frameworks
+  </Card>
+</CardGroup>

@@ -1,0 +1,19 @@
+"""Event types for agent communication."""
+
+from enum import Enum
+
+
+class EventType(str, Enum):
+    """Types of events that flow through the outbox."""
+
+    ITEM_UPSERTED = "ITEM_UPSERTED"
+    PASSAGES_CREATED = "PASSAGES_CREATED"
+    ENTITIES_EXTRACTED = "ENTITIES_EXTRACTED"
+    VECTORS_CREATED = "VECTORS_CREATED"
+    TEXT_INDEXED = "TEXT_INDEXED"
+    GRAPH_INDEXED = "GRAPH_INDEXED"
+    ENTITY_PAGE_DIRTY = "ENTITY_PAGE_DIRTY"
+
+    ITEM_DELETED = "ITEM_DELETED"
+    ENTITY_MERGED = "ENTITY_MERGED"
+    ARTIFACT_CREATED = "ARTIFACT_CREATED"

@@ -1,0 +1,80 @@
+---
+title: "Welcome to cogmem-kos"
+description: "Framework-agnostic Knowledge Operating System kernel for AI applications"
+icon: "house"
+---
+
+# Build with cogmem-kos
+
+A universal, self-improving knowledge layer for LLM applications. cogmem-kos provides the retrieval spine that any AI agent framework can plug into.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running in 5 minutes
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
+    Understand how cogmem-kos works
+  </Card>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
+    Explore the REST API
+  </Card>
+  <Card title="Cookbooks" icon="book-open" href="/cookbooks/overview">
+    Production-ready tutorials
+  </Card>
+</CardGroup>
+
+## What is cogmem-kos?
+
+cogmem-kos is a **Knowledge Operating System kernel** that provides:
+
+- **Unified Retrieval** - Text search, vector search, and graph traversal through a single API
+- **Entity Graph** - Automatic entity extraction and Wikipedia-style entity pages
+- **Agent Subsystem** - Event-driven agents for chunking, embedding, and enrichment
+- **Framework Agnostic** - Works with LangChain, CrewAI, AutoGen, or any framework
+
+## Deployment Modes
+
+<CardGroup cols={2}>
+  <Card title="Enterprise Mode" icon="building">
+    Best-of-breed databases for production scale:
+    - **Postgres** - Admin, objects, outbox
+    - **OpenSearch** - Text search with highlights
+    - **Neo4j** - Entity graph
+    - **Qdrant** - Vector embeddings
+  </Card>
+  <Card title="Solo Mode" icon="user">
+    Single database for simplicity:
+    - **SurrealDB** - All capabilities in one
+    - Perfect for development
+    - Easy local setup
+  </Card>
+</CardGroup>
+
+## Core Concepts
+
+### Items & Passages
+
+**Items** are your source documents (emails, files, notes). They get chunked into **Passages** for search and embedding.
+
+### Entities
+
+Named entities (people, organizations, concepts) are extracted from passages and linked in a knowledge graph.
+
+### Retrieval Plans
+
+Pre-built retrieval strategies that orchestrate multiple search backends:
+
+- **Search First** - Lexical search → hydrate → graph expansion
+- **Wikipedia Page** - Entity-centric view with facts and evidence
+- **Semantic First** - Vector search → rerank → hydrate
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/platform/installation">
+    Install cogmem-kos
+  </Card>
+  <Card title="Quick Start" icon="play" href="/quickstart">
+    Your first search
+  </Card>
+</CardGroup>

@@ -1,0 +1,253 @@
+---
+title: "Retrieval Plans"
+description: "Pre-built retrieval strategies"
+icon: "route"
+---
+
+# Retrieval Plans
+
+Retrieval plans orchestrate multiple search backends to produce UI-ready results.
+
+## Available Plans
+
+<CardGroup cols={3}>
+  <Card title="Search First" icon="magnifying-glass">
+    Lexical search → hydrate → graph expansion
+  </Card>
+  <Card title="Wikipedia Page" icon="book">
+    Entity-centric view with facts and evidence
+  </Card>
+  <Card title="Semantic First" icon="brain">
+    Vector search → rerank → hydrate
+  </Card>
+</CardGroup>
+
+## Search First Plan (MVP)
+
+The primary retrieval strategy for text-based queries.
+
+### Flow
+
+```
+Input: query + tenant_id + filters
+         │
+         ▼
+┌─────────────────────┐
+│  OpenSearch Search  │  ← Lexical search with highlights
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Hydrate Objects    │  ← Get full Item/Passage from ObjectStore
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Graph Expansion    │  ← Get related entities from Neo4j
+└─────────────────────┘
+         │
+         ▼
+Output: hits + facets + related_entities
+```
+
+### Usage
+
+```python
+from kos.core.planning.search_first import SearchFirstPlan, SearchFirstRequest
+
+plan = SearchFirstPlan(
+    text_search=text_search,
+    object_store=object_store,
+    graph_search=graph_search,  # Optional
+)
+
+request = SearchFirstRequest(
+    query="machine learning",
+    tenant_id="tenant-1",
+    user_id="user-1",
+    filters={"source": "files"},
+    facets_requested=["source", "content_type"],
+    limit=20,
+)
+
+result = await plan.execute(request)
+
+# Result contains:
+# - hits: list of SearchFirstHit with highlights
+# - facets: aggregations by field
+# - related_entities: entities mentioned in top hits
+# - total: total count
+# - took_ms: query time
+```
+
+### Response
+
+```json
+{
+  "hits": [
+    {
+      "kos_id": "passage-123",
+      "title": "Introduction to ML",
+      "snippet": "Machine learning is...",
+      "highlights": ["<em>Machine learning</em> is a subset..."],
+      "score": 1.5,
+      "source": "files",
+      "item_id": "item-456"
+    }
+  ],
+  "facets": [
+    {
+      "field": "source",
+      "buckets": [{"value": "files", "count": 10}]
+    }
+  ],
+  "related_entities": [
+    {"kos_id": "entity-789", "name": "Andrew Ng", "type": "person"}
+  ],
+  "total": 42,
+  "took_ms": 23
+}
+```
+
+## Wikipedia Page Plan
+
+Entity-centric retrieval for building entity pages.
+
+### Flow
+
+```
+Input: entity_id + tenant_id
+         │
+         ▼
+┌─────────────────────┐
+│  Neo4j Entity Page  │  ← Get entity, facts, evidence
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  OpenSearch Search  │  ← Additional passages mentioning entity
+└─────────────────────┘
+         │
+         ▼
+Output: EntityPagePayload
+```
+
+### Usage
+
+```python
+from kos.core.planning.wikipedia_page import WikipediaPagePlan, WikipediaPageRequest
+
+plan = WikipediaPagePlan(
+    graph_search=graph_search,
+    text_search=text_search,  # Optional
+)
+
+request = WikipediaPageRequest(
+    entity_id="entity-123",
+    tenant_id="tenant-1",
+    evidence_limit=10,
+)
+
+result = await plan.execute(request)
+```
+
+### Response
+
+```json
+{
+  "entity": {
+    "kos_id": "entity-123",
+    "name": "Andrew Ng",
+    "type": "person"
+  },
+  "summary": "Andrew Ng is a computer scientist...",
+  "facts": [
+    {"predicate": "works_at", "object_name": "Stanford University"}
+  ],
+  "evidence_snippets": [
+    {
+      "passage_id": "passage-456",
+      "text": "Dr. Andrew Ng from Stanford...",
+      "source_title": "ML Introduction"
+    }
+  ],
+  "related_entities": [
+    {"kos_id": "entity-789", "name": "Stanford University", "type": "organization"}
+  ]
+}
+```
+
+## Semantic First Plan
+
+Vector-based retrieval with optional reranking.
+
+### Flow
+
+```
+Input: query + tenant_id
+         │
+         ▼
+┌─────────────────────┐
+│   Embed Query       │  ← Generate query embedding
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│   Qdrant Search     │  ← Vector similarity search
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│   Rerank (optional) │  ← Cross-encoder reranking
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│   Hydrate Objects   │  ← Get full passages
+└─────────────────────┘
+         │
+         ▼
+Output: ranked hits
+```
+
+### Usage
+
+```python
+from kos.core.planning.semantic_first import SemanticFirstPlan, SemanticFirstRequest
+
+plan = SemanticFirstPlan(
+    vector_search=vector_search,
+    object_store=object_store,
+    reranker=reranker,  # Optional
+)
+
+request = SemanticFirstRequest(
+    query="how does neural network training work",
+    tenant_id="tenant-1",
+    limit=20,
+    rerank=True,
+    rerank_top_k=10,
+)
+
+result = await plan.execute(request)
+```
+
+## Choosing a Plan
+
+| Use Case | Recommended Plan |
+|----------|------------------|
+| Keyword search with filters | Search First |
+| Entity exploration | Wikipedia Page |
+| Semantic similarity | Semantic First |
+| Hybrid (keywords + meaning) | Search First + Semantic First |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
+    See how plans are exposed via API
+  </Card>
+  <Card title="Search Cookbook" icon="book-open" href="/cookbooks/search-first">
+    Build a search application
+  </Card>
+</CardGroup>

@@ -1,0 +1,274 @@
+---
+title: "Integrations"
+description: "Connect cogmem-kos to AI frameworks"
+icon: "puzzle-piece"
+---
+
+# Integrations Cookbook
+
+Connect cogmem-kos to popular AI agent frameworks.
+
+## Overview
+
+cogmem-kos is **framework-agnostic** - it provides a REST API that any framework can call. This cookbook shows integration patterns for:
+
+- LangChain
+- LangGraph
+- CrewAI
+- AutoGen
+
+## LangChain Integration
+
+Create a LangChain tool that searches cogmem-kos:
+
+```python
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+import httpx
+
+class KOSSearchInput(BaseModel):
+    query: str = Field(description="Search query")
+
+class KOSSearchTool(BaseTool):
+    name = "kos_search"
+    description = "Search the knowledge base for relevant information"
+    args_schema = KOSSearchInput
+    
+    api_base: str = "http://localhost:8000"
+    tenant_id: str = "demo"
+    
+    def _run(self, query: str) -> str:
+        with httpx.Client() as client:
+            response = client.post(
+                f"{self.api_base}/search",
+                json={
+                    "tenant_id": self.tenant_id,
+                    "query": query,
+                    "limit": 5,
+                },
+            )
+            results = response.json()
+            
+            # Format for LLM
+            output = []
+            for hit in results.get("hits", []):
+                output.append(f"- {hit['title']}: {hit['snippet']}")
+            
+            return "\n".join(output) if output else "No results found."
+    
+    async def _arun(self, query: str) -> str:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.api_base}/search",
+                json={
+                    "tenant_id": self.tenant_id,
+                    "query": query,
+                    "limit": 5,
+                },
+            )
+            results = response.json()
+            
+            output = []
+            for hit in results.get("hits", []):
+                output.append(f"- {hit['title']}: {hit['snippet']}")
+            
+            return "\n".join(output) if output else "No results found."
+
+# Usage with an agent
+from langchain.agents import initialize_agent, AgentType
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+tools = [KOSSearchTool()]
+
+agent = initialize_agent(
+    tools,
+    llm,
+    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    verbose=True,
+)
+
+result = agent.run("What do we know about machine learning?")
+```
+
+## LangGraph Integration
+
+Use cogmem-kos as a node in a LangGraph workflow:
+
+```python
+from langgraph.graph import StateGraph, END
+from typing import TypedDict
+import httpx
+
+class State(TypedDict):
+    query: str
+    search_results: list
+    answer: str
+
+async def search_kos(state: State) -> State:
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/search",
+            json={
+                "tenant_id": "demo",
+                "query": state["query"],
+                "limit": 5,
+            },
+        )
+        results = response.json()
+        state["search_results"] = results.get("hits", [])
+    return state
+
+async def generate_answer(state: State) -> State:
+    # Use LLM to generate answer from search results
+    context = "\n".join(
+        f"- {hit['title']}: {hit['snippet']}"
+        for hit in state["search_results"]
+    )
+    
+    # Your LLM call here
+    state["answer"] = f"Based on the knowledge base:\n{context}"
+    return state
+
+# Build graph
+workflow = StateGraph(State)
+workflow.add_node("search", search_kos)
+workflow.add_node("generate", generate_answer)
+workflow.add_edge("search", "generate")
+workflow.add_edge("generate", END)
+workflow.set_entry_point("search")
+
+app = workflow.compile()
+
+# Run
+result = await app.ainvoke({"query": "machine learning"})
+print(result["answer"])
+```
+
+## CrewAI Integration
+
+Create a CrewAI tool:
+
+```python
+from crewai import Agent, Task, Crew
+from crewai_tools import BaseTool
+import httpx
+
+class KOSSearchTool(BaseTool):
+    name: str = "Knowledge Search"
+    description: str = "Search the organization's knowledge base"
+    
+    def _run(self, query: str) -> str:
+        with httpx.Client() as client:
+            response = client.post(
+                "http://localhost:8000/search",
+                json={
+                    "tenant_id": "demo",
+                    "query": query,
+                    "limit": 5,
+                },
+            )
+            results = response.json()
+            
+            output = []
+            for hit in results.get("hits", []):
+                output.append(f"• {hit['title']}: {hit['snippet']}")
+            
+            return "\n".join(output) if output else "No results found."
+
+# Create agent with tool
+researcher = Agent(
+    role="Research Analyst",
+    goal="Find relevant information from the knowledge base",
+    backstory="Expert at searching and synthesizing information",
+    tools=[KOSSearchTool()],
+    verbose=True,
+)
+
+# Create task
+research_task = Task(
+    description="Research what we know about {topic}",
+    expected_output="A summary of relevant information",
+    agent=researcher,
+)
+
+# Run crew
+crew = Crew(agents=[researcher], tasks=[research_task])
+result = crew.kickoff(inputs={"topic": "machine learning"})
+```
+
+## AutoGen Integration
+
+Use cogmem-kos with AutoGen agents:
+
+```python
+from autogen import AssistantAgent, UserProxyAgent
+import httpx
+
+def search_knowledge_base(query: str) -> str:
+    """Search the knowledge base for information."""
+    with httpx.Client() as client:
+        response = client.post(
+            "http://localhost:8000/search",
+            json={
+                "tenant_id": "demo",
+                "query": query,
+                "limit": 5,
+            },
+        )
+        results = response.json()
+        
+        output = []
+        for hit in results.get("hits", []):
+            output.append(f"- {hit['title']}: {hit['snippet']}")
+        
+        return "\n".join(output) if output else "No results found."
+
+# Register function
+assistant = AssistantAgent(
+    name="assistant",
+    llm_config={"model": "gpt-4o-mini"},
+)
+
+user_proxy = UserProxyAgent(
+    name="user_proxy",
+    human_input_mode="NEVER",
+    code_execution_config=False,
+)
+
+# Register the function
+user_proxy.register_function(
+    function_map={"search_knowledge_base": search_knowledge_base}
+)
+
+# Chat
+user_proxy.initiate_chat(
+    assistant,
+    message="Search the knowledge base for information about machine learning",
+)
+```
+
+## MCP Server (Coming Soon)
+
+cogmem-kos will also expose an MCP (Model Context Protocol) server for direct integration with Claude and other MCP-compatible clients.
+
+```python
+# Future API
+from kos.kernel.api.mcp import create_mcp_server
+
+server = create_mcp_server(
+    tenant_id="demo",
+    tools=["search", "get_entity"],
+)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
+    Full API documentation
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
+    Understand the system design
+  </Card>
+</CardGroup>

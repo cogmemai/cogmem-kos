@@ -1,0 +1,179 @@
+---
+title: "Configuration"
+description: "Configure cogmem-kos with environment variables"
+icon: "gear"
+---
+
+# Configuration
+
+cogmem-kos is configured via environment variables, typically in a `.env` file.
+
+## Mode Selection
+
+```bash
+# Enterprise mode (default) - uses Postgres, OpenSearch, Neo4j, Qdrant
+KOS_MODE=enterprise
+
+# Solo mode - uses SurrealDB only
+KOS_MODE=solo
+```
+
+## Enterprise Mode Settings
+
+### Postgres
+
+```bash
+# Connection string (required)
+POSTGRES_DSN=postgresql+asyncpg://user:password@localhost:5432/cogmem_kos
+```
+
+### OpenSearch
+
+```bash
+# Connection settings
+OPENSEARCH_URL=https://localhost:9200
+OPENSEARCH_USER=admin
+OPENSEARCH_PASSWORD=admin
+OPENSEARCH_VERIFY_CERTS=false
+```
+
+### Neo4j
+
+```bash
+# Connection settings
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=password
+```
+
+### Qdrant
+
+```bash
+# Connection settings
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=  # Optional, for cloud deployments
+```
+
+## Solo Mode Settings
+
+### SurrealDB
+
+```bash
+# Connection settings
+SURREALDB_URL=ws://localhost:8000/rpc
+SURREALDB_NAMESPACE=cogmem
+SURREALDB_DATABASE=kos
+SURREALDB_USER=root
+SURREALDB_PASSWORD=root
+```
+
+## LLM Settings
+
+For entity extraction and summarization:
+
+```bash
+# LiteLLM configuration
+LITELLM_API_BASE=http://localhost:4000  # Optional proxy
+LITELLM_API_KEY=sk-...                   # API key
+LITELLM_DEFAULT_MODEL=gpt-4o-mini        # Default model
+
+# Embedding settings
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSIONS=1536
+```
+
+## API Settings
+
+```bash
+# Server configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+API_RELOAD=true  # Enable for development
+
+# Logging
+LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR
+```
+
+## Complete Examples
+
+<Tabs>
+  <Tab title="Enterprise Mode">
+    ```bash .env
+    # Mode
+    KOS_MODE=enterprise
+
+    # Postgres
+    POSTGRES_DSN=postgresql+asyncpg://kos:kos@localhost:5432/cogmem_kos
+
+    # OpenSearch
+    OPENSEARCH_URL=http://localhost:9200
+    OPENSEARCH_USER=
+    OPENSEARCH_PASSWORD=
+    OPENSEARCH_VERIFY_CERTS=false
+
+    # Neo4j
+    NEO4J_URI=bolt://localhost:7687
+    NEO4J_USER=neo4j
+    NEO4J_PASSWORD=password
+
+    # Qdrant
+    QDRANT_URL=http://localhost:6333
+
+    # LLM
+    LITELLM_API_KEY=sk-...
+    LITELLM_DEFAULT_MODEL=gpt-4o-mini
+    EMBEDDING_MODEL=text-embedding-3-small
+
+    # API
+    API_HOST=0.0.0.0
+    API_PORT=8000
+    LOG_LEVEL=INFO
+    ```
+  </Tab>
+  <Tab title="Solo Mode">
+    ```bash .env
+    # Mode
+    KOS_MODE=solo
+
+    # SurrealDB
+    SURREALDB_URL=ws://localhost:8000/rpc
+    SURREALDB_NAMESPACE=cogmem
+    SURREALDB_DATABASE=kos
+    SURREALDB_USER=root
+    SURREALDB_PASSWORD=root
+
+    # LLM
+    LITELLM_API_KEY=sk-...
+    LITELLM_DEFAULT_MODEL=gpt-4o-mini
+    EMBEDDING_MODEL=text-embedding-3-small
+
+    # API
+    API_HOST=0.0.0.0
+    API_PORT=8000
+    LOG_LEVEL=INFO
+    ```
+  </Tab>
+</Tabs>
+
+## Settings Class
+
+Settings are loaded via Pydantic:
+
+```python
+from kos.kernel.config.settings import get_settings
+
+settings = get_settings()
+print(settings.kos_mode)  # KosMode.ENTERPRISE or KosMode.SOLO
+print(settings.postgres_dsn)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Solo Mode" icon="user" href="/platform/solo-mode">
+    Learn about solo mode
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Start using cogmem-kos
+  </Card>
+</CardGroup>
