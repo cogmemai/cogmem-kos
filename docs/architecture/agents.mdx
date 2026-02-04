@@ -1,12 +1,46 @@
 ---
 title: "Agents"
-description: "Event-driven agent subsystem"
+description: "Personal planning agent and event-driven agent subsystem"
 icon: "robot"
 ---
 
-# Agents
+# Agent Subsystem
 
-Agents are event-driven workers that process data through the pipeline.
+At the heart of cogmem-kos is the **Personal Planning Agent**—a cognitive agent with persistent, user-specific memory that orchestrates other specialized agents to complete complex tasks. This architecture addresses the critical limitation of current multi-agent frameworks: the lack of memory that enables learning and adaptation.
+
+## The Personal Planning Agent
+
+The personal planning agent is the **central orchestrator** of the cogmem-kos framework. Unlike traditional multi-agent systems that pass entire conversation histories through prompts, our planning agent:
+
+<CardGroup cols={2}>
+  <Card title="Persistent Memory" icon="brain">
+    Maintains user-specific knowledge that persists across sessions
+  </Card>
+  <Card title="Contextual Planning" icon="map">
+    Uses past experiences to create better action plans
+  </Card>
+  <Card title="Agent Orchestration" icon="sitemap">
+    Coordinates specialized agents to execute complex tasks
+  </Card>
+  <Card title="Self-Improvement" icon="chart-line">
+    Learns from completed actions to enhance future performance
+  </Card>
+</CardGroup>
+
+```python
+from kos.agents.planning.personal_planning_agent import PersonalPlanningAgent
+
+agent = PersonalPlanningAgent(
+    object_store=object_store,
+    outbox_store=outbox_store,
+    memory_store=memory_store,
+    llm_gateway=llm_gateway,
+)
+
+# Plan and execute a complex task
+plan = await agent.create_plan(user_id, task_description)
+result = await agent.execute_plan(plan)
+```
 
 ## Design Principles
 
@@ -39,6 +73,27 @@ class EventType(str, Enum):
 ```
 
 ## Core Agents
+
+### PersonalPlanningAgent
+
+The central orchestrator that plans and coordinates other agents.
+
+| Property | Value |
+|----------|-------|
+| **Consumes** | `TASK_REQUESTED`, `PLAN_STEP_COMPLETED` |
+| **Emits** | `PLAN_CREATED`, `AGENT_DISPATCHED` |
+| **Writes to** | ObjectStore (plans, memories) |
+
+```python
+from kos.agents.planning.personal_planning_agent import PersonalPlanningAgent
+
+agent = PersonalPlanningAgent(
+    object_store=object_store,
+    outbox_store=outbox_store,
+    memory_store=memory_store,
+    llm_gateway=llm_gateway,
+)
+```
 
 ### ChunkAgent
 
@@ -148,25 +203,37 @@ agent = WikipediaPageAgent(
 
 ## Agent Pipeline
 
+The Personal Planning Agent sits at the top of the hierarchy, orchestrating specialized agents:
+
 ```
-ITEM_UPSERTED
-     │
-     ▼
-┌─────────────┐
-│ ChunkAgent  │
-└─────────────┘
-     │
-     ▼
-PASSAGES_CREATED
-     │
-     ├──────────────────┬──────────────────┐
-     ▼                  ▼                  ▼
-┌─────────────┐  ┌─────────────┐  ┌──────────────────┐
-│ EmbedAgent  │  │ IndexText   │  │ EntityExtract    │
-└─────────────┘  └─────────────┘  └──────────────────┘
-     │                  │                  │
-     ▼                  ▼                  ▼
-VECTORS_CREATED   TEXT_INDEXED    ENTITIES_EXTRACTED
+                    TASK_REQUESTED
+                          │
+                          ▼
+               ┌─────────────────────┐
+               │ PersonalPlanningAgent│
+               │   (orchestrator)    │
+               └─────────────────────┘
+                          │
+            ┌─────────────┼─────────────┐
+            ▼             ▼             ▼
+      ITEM_UPSERTED  QUERY_NEEDED  ANALYSIS_NEEDED
+            │
+            ▼
+    ┌─────────────┐
+    │ ChunkAgent  │
+    └─────────────┘
+            │
+            ▼
+    PASSAGES_CREATED
+            │
+     ┌──────┼──────┬──────────────┐
+     ▼      ▼      ▼              ▼
+┌────────┐┌────────┐┌──────────────┐
+│ Embed  ││ Index  ││ EntityExtract│
+└────────┘└────────┘└──────────────┘
+     │      │              │
+     ▼      ▼              ▼
+VECTORS  TEXT_IDX   ENTITIES_EXTRACTED
 ```
 
 ## Running Workers

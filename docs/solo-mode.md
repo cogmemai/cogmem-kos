@@ -70,35 +70,69 @@ API_PORT=8000
 
 ```bash
 # Install with solo mode dependencies
-pip install cogmem-kos[solo]
+pip install "cogmem-kos[solo]"
 ```
 
 ## Usage
 
-### Initialize Schema
+### Quick Start (Recommended)
+
+The easiest way to run solo mode uses **embedded SurrealDB** - no external server or Docker needed:
 
 ```bash
-# Auto-detect mode from KOS_MODE
-kos init
+# Start with local file database (data persists)
+kos dev-server-solo
 
-# Or explicitly specify
-kos init --mode solo
+# Use in-memory database (data lost on restart)
+kos dev-server-solo --db-path memory
 
-# Force recreate (drops existing data)
-kos init --mode solo --force
+# Custom database file location
+kos dev-server-solo --db-path ./data/my-project.db
 ```
 
-### Start Services
+Then in another terminal, start the worker:
 
 ```bash
-# Start SurrealDB (if not running)
-surreal start --user root --pass root memory
-
-# Start API server
-kos dev-server
-
-# Start worker (in another terminal)
 kos run-worker
+```
+
+The embedded mode uses the SurrealDB Python SDK directly - your data is stored in a local file (like SQLite or ChromaDB).
+
+### Manual Setup (External Server)
+
+If you prefer to run SurrealDB as a separate server:
+
+#### Start SurrealDB Server
+
+```bash
+# Install SurrealDB CLI (macOS)
+brew install surrealdb/tap/surreal
+
+# Or Linux/Windows
+curl -sSf https://install.surrealdb.com | sh
+
+# Start server
+surreal start --user root --pass root memory
+```
+
+#### Configure Environment
+
+```bash
+# .env
+KOS_MODE=solo
+SURREALDB_URL=ws://localhost:8000/rpc
+SURREALDB_NAMESPACE=cogmem
+SURREALDB_DATABASE=kos
+SURREALDB_USER=root
+SURREALDB_PASSWORD=root
+```
+
+#### Start Services
+
+```bash
+kos init --mode solo
+kos dev-server
+kos run-worker  # in another terminal
 ```
 
 ### Running SurrealDB with Docker
@@ -140,6 +174,50 @@ Solo mode creates the following tables in SurrealDB:
 - Full-text search on `passages.text`
 - Unique indexes on `kos_id` fields
 - Tenant indexes for multi-tenancy
+
+## Viewing Data with Surrealist
+
+When using embedded mode (`kos dev-server-solo`), the database is stored in a local folder (e.g., `./cogmem.db/`). To view and query your data with [Surrealist](https://surrealist.app/) or the SurrealDB CLI:
+
+### Option 1: Start SurrealDB Server (Recommended)
+
+Stop your `kos dev-server-solo` first (SurrealDB locks the database files), then start SurrealDB as a server pointing to your existing database:
+
+```bash
+surreal start --user root --pass root surrealkv:./cogmem.db
+```
+
+Then connect Surrealist to:
+- **Endpoint**: `ws://localhost:8000`
+- **Namespace**: `cogmem`
+- **Database**: `kos`
+- **Username**: `root`
+- **Password**: `root`
+
+### Option 2: Use the SurrealDB CLI
+
+Query the database directly without starting a server:
+
+```bash
+surreal sql --endpoint surrealkv:./cogmem.db --namespace cogmem --database kos
+```
+
+Then run SurrealQL queries:
+```sql
+SELECT * FROM items LIMIT 10;
+SELECT * FROM entities;
+INFO FOR DB;
+```
+
+### Installing SurrealDB CLI
+
+```bash
+# macOS
+brew install surrealdb/tap/surreal
+
+# Linux/Windows
+curl -sSf https://install.surrealdb.com | sh
+```
 
 ## API Compatibility
 

@@ -6,7 +6,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from kos.kernel.api.http.routes import search, entities, items
-from kos.kernel.api.http.dependencies import cleanup_providers, _get_postgres_connection, _get_opensearch_client
+from kos.kernel.api.http.dependencies import (
+    cleanup_providers,
+    _get_postgres_connection,
+    _get_opensearch_client,
+    _get_surrealdb_client,
+)
+from kos.kernel.config.settings import KosMode
 from kos.kernel.config.settings import get_settings
 
 
@@ -42,27 +48,40 @@ def create_app() -> FastAPI:
 
     @app.get("/admin/health", tags=["admin"])
     async def health_check():
-        """Check connectivity to all providers."""
+        """Check connectivity to all providers based on current mode."""
         health = {
             "status": "healthy",
+            "mode": settings.kos_mode.value,
+            "surrealdb_url": settings.surrealdb_url if settings.kos_mode == KosMode.SOLO else None,
             "providers": {},
         }
 
-        try:
-            postgres_conn = _get_postgres_connection()
-            pg_healthy = await postgres_conn.health_check()
-            health["providers"]["postgres"] = "healthy" if pg_healthy else "unhealthy"
-        except Exception as e:
-            health["providers"]["postgres"] = f"error: {str(e)}"
-            health["status"] = "degraded"
+        if settings.kos_mode == KosMode.SOLO:
+            # Solo mode: check SurrealDB only
+            try:
+                surrealdb_client = _get_surrealdb_client()
+                surreal_healthy = await surrealdb_client.health_check()
+                health["providers"]["surrealdb"] = "healthy" if surreal_healthy else "unhealthy"
+            except Exception as e:
+                health["providers"]["surrealdb"] = f"error: {str(e)}"
+                health["status"] = "degraded"
+        else:
+            # Enterprise mode: check Postgres and OpenSearch
+            try:
+                postgres_conn = _get_postgres_connection()
+                pg_healthy = await postgres_conn.health_check()
+                health["providers"]["postgres"] = "healthy" if pg_healthy else "unhealthy"
+            except Exception as e:
+                health["providers"]["postgres"] = f"error: {str(e)}"
+                health["status"] = "degraded"
 
-        try:
-            opensearch_client = _get_opensearch_client()
-            os_healthy = await opensearch_client.health_check()
-            health["providers"]["opensearch"] = "healthy" if os_healthy else "unhealthy"
-        except Exception as e:
-            health["providers"]["opensearch"] = f"error: {str(e)}"
-            health["status"] = "degraded"
+            try:
+                opensearch_client = _get_opensearch_client()
+                os_healthy = await opensearch_client.health_check()
+                health["providers"]["opensearch"] = "healthy" if os_healthy else "unhealthy"
+            except Exception as e:
+                health["providers"]["opensearch"] = f"error: {str(e)}"
+                health["status"] = "degraded"
 
         return health
 

@@ -60,6 +60,44 @@ class Settings(BaseSettings):
 
     log_level: str = Field(default="INFO")
 
+    object_store_provider: str | None = Field(
+        default=None,
+        description="Override object store provider (postgres_object_store, surrealdb_object_store). If None, defaults based on kos_mode.",
+    )
+    outbox_store_provider: str | None = Field(
+        default=None,
+        description="Override outbox store provider (postgres_outbox_store, surrealdb_outbox_store). If None, defaults based on kos_mode.",
+    )
+    text_search_provider: str | None = Field(
+        default=None,
+        description="Override text search provider (opensearch_text_search, surrealdb_text_search). If None, defaults based on kos_mode.",
+    )
+    graph_search_provider: str | None = Field(
+        default=None,
+        description="Override graph search provider (neo4j_graph_search, surrealdb_graph_search). If None, defaults based on kos_mode.",
+    )
+    vector_search_provider: str | None = Field(
+        default=None,
+        description="Override vector search provider (qdrant_vector_search, surrealdb_vector_search). If None, defaults based on kos_mode.",
+    )
+    integrated_search_provider: str | None = Field(
+        default=None,
+        description="Override integrated search provider (mem0_integrated_search, surrealdb_integrated_search). If None, defaults based on kos_mode.",
+    )
+
+    mem0_api_key: str | None = Field(
+        default=None,
+        description="Mem0 API key for integrated search. Can also be set via MEM0_API_KEY environment variable.",
+    )
+    mem0_org_id: str | None = Field(
+        default=None,
+        description="Mem0 organization ID. Can also be set via MEM0_ORG_ID environment variable.",
+    )
+    mem0_project_id: str | None = Field(
+        default=None,
+        description="Mem0 project ID. Can also be set via MEM0_PROJECT_ID environment variable.",
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

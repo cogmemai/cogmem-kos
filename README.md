@@ -19,13 +19,13 @@ cogmem-kos provides a retrieval-first knowledge infrastructure with:
 pip install cogmem-kos
 
 # Enterprise mode (recommended)
-pip install cogmem-kos[enterprise]
+pip install "cogmem-kos[enterprise]"
 
 # Solo mode (SurrealDB only)
-pip install cogmem-kos[solo]
+pip install "cogmem-kos[solo]"
 
 # Development
-pip install cogmem-kos[all]
+pip install "cogmem-kos[all]"
 ```
 
 ## Quick Start

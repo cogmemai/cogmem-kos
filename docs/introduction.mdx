@@ -1,16 +1,19 @@
 ---
 title: "Welcome to cogmem-kos"
-description: "Framework-agnostic Knowledge Operating System kernel for AI applications"
+description: "Framework-agnostic Knowledge Operating System kernel with a personalized planning agent at its core"
 icon: "house"
 ---
 
 # Build with cogmem-kos
 
-A universal, self-improving knowledge layer for LLM applications. cogmem-kos provides the retrieval spine that any AI agent framework can plug into.
+A multi-agent framework centered around a **personalized planning agent** with cognitive memory. cogmem-kos addresses the critical gap in current LLM agent systems: the lack of persistent, user-specific memory that enables agents to learn and improve over time.
 
 <CardGroup cols={2}>
   <Card title="Quick Start" icon="rocket" href="/quickstart">
     Get up and running in 5 minutes
+  </Card>
+  <Card title="Agent Subsystem" icon="robot" href="/architecture/agents">
+    Explore the personal planning agent
   </Card>
   <Card title="Architecture" icon="sitemap" href="/architecture/overview">
     Understand how cogmem-kos works
@@ -18,18 +21,29 @@ A universal, self-improving knowledge layer for LLM applications. cogmem-kos pro
   <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
     Explore the REST API
   </Card>
-  <Card title="Cookbooks" icon="book-open" href="/cookbooks/overview">
-    Production-ready tutorials
-  </Card>
 </CardGroup>
 
 ## What is cogmem-kos?
 
-cogmem-kos is a **Knowledge Operating System kernel** that provides:
+cogmem-kos is a **Knowledge Operating System kernel** built around a central insight: LLM agents need personalized memory to plan effectively. At its heart is the **Personal Planning Agent**—a cognitive agent with its own memory database that orchestrates other agents to complete complex tasks.
 
+### The Personal Planning Agent
+
+The personal planning agent is the **central orchestrator** of the cogmem-kos framework. Unlike traditional multi-agent systems that pass entire conversation histories through prompts, our planning agent:
+
+- **Maintains persistent memory** - User-specific knowledge that persists across sessions
+- **Plans with context** - Uses past experiences to create better action plans
+- **Orchestrates agents** - Coordinates specialized agents (chunking, embedding, extraction) to execute tasks
+- **Self-improves over time** - Learns from completed actions to enhance future performance
+
+This architecture reduces token consumption, improves task success rates, and enables coherent long-term strategies.
+
+### Core Capabilities
+
+- **Agent Subsystem** - Event-driven agents with the personal planning agent at the center
+- **Cognitive Memory** - Personalized, persistent memory architecture for learning and adaptation
 - **Unified Retrieval** - Text search, vector search, and graph traversal through a single API
 - **Entity Graph** - Automatic entity extraction and Wikipedia-style entity pages
-- **Agent Subsystem** - Event-driven agents for chunking, embedding, and enrichment
 - **Framework Agnostic** - Works with LangChain, CrewAI, AutoGen, or any framework
 
 ## Deployment Modes
@@ -68,11 +82,21 @@ Pre-built retrieval strategies that orchestrate multiple search backends:
 - **Wikipedia Page** - Entity-centric view with facts and evidence
 - **Semantic First** - Vector search → rerank → hydrate
 
+## Why Personal Planning?
+
+Current multi-agent frameworks suffer from a critical limitation: they lack persistent memory. Each interaction starts fresh, requiring agents to rebuild context from scratch. This leads to:
+
+- **Excessive token consumption** - Entire conversation histories passed with each prompt
+- **Incoherent strategies** - Agents cannot maintain long-term plans
+- **No learning** - Past successes and failures are forgotten
+
+The personal planning agent solves these problems by maintaining a cognitive memory database specific to each user, enabling the framework to learn, adapt, and improve over time.
+
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Installation" icon="download" href="/platform/installation">
-    Install cogmem-kos
+  <Card title="Agent Subsystem" icon="robot" href="/architecture/agents">
+    Deep dive into the personal planning agent
   </Card>
   <Card title="Quick Start" icon="play" href="/quickstart">
     Your first search

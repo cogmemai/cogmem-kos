@@ -62,3 +62,6 @@ logs/
 # Node (for docs)
 node_modules/
 .next/
+
+#surrealdb database
+cogmem.db/

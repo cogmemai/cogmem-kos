@@ -3,7 +3,7 @@
 import typer
 from rich.console import Console
 
-from kos.cli.commands import init, run_worker, dev_server
+from kos.cli.commands import init, run_worker, dev_server, dev_server_solo
 
 app = typer.Typer(
     name="kos",
@@ -15,6 +15,7 @@ console = Console()
 
 app.add_typer(init.app, name="init")
 app.command(name="dev-server")(dev_server.dev_server)
+app.command(name="dev-server-solo")(dev_server_solo.dev_server_solo)
 app.command(name="run-worker")(run_worker.run_worker)
 
 
