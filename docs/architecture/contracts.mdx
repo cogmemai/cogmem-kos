@@ -209,9 +209,87 @@ class RerankerBase(ABC):
     ) -> list[RankedCandidate]
 ```
 
+## Adaptive Cognitive Plane Contracts
+
+These contracts support the self-evolving knowledge layer. They follow the same design rules as all other contracts — no provider client imports.
+
+### StrategyStore
+
+CRUD and scope resolution for MemoryStrategy objects:
+
+```python
+class StrategyStore(ABC):
+    async def save_strategy(self, strategy: MemoryStrategy) -> MemoryStrategy
+    async def get_strategy(self, kos_id: KosId) -> MemoryStrategy | None
+    async def get_active_strategy(
+        self,
+        scope_type: StrategyScopeType,
+        scope_id: str,
+    ) -> MemoryStrategy | None
+    async def list_strategies(
+        self,
+        scope_type: StrategyScopeType | None = None,
+        scope_id: str | None = None,
+        include_deprecated: bool = False,
+    ) -> list[MemoryStrategy]
+    async def deprecate_strategy(self, kos_id: KosId) -> bool
+```
+
+### OutcomeStore
+
+Append-only persistence for outcome signals. **Outcomes are never updated or deleted.**
+
+```python
+class OutcomeStore(ABC):
+    async def save_outcome(self, outcome: OutcomeEvent) -> OutcomeEvent
+    async def get_outcome(self, kos_id: KosId) -> OutcomeEvent | None
+    async def query_outcomes(
+        self,
+        strategy_id: KosId | None = None,
+        outcome_type: OutcomeType | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        limit: int = 100,
+    ) -> list[OutcomeEvent]
+    async def count_outcomes(
+        self,
+        strategy_id: KosId,
+        outcome_type: OutcomeType | None = None,
+        since: datetime | None = None,
+    ) -> int
+```
+
+### ProposalStore
+
+CRUD and status management for strategy change proposals:
+
+```python
+class ProposalStore(ABC):
+    async def save_proposal(
+        self, proposal: StrategyChangeProposal
+    ) -> StrategyChangeProposal
+    async def get_proposal(self, kos_id: KosId) -> StrategyChangeProposal | None
+    async def list_proposals(
+        self,
+        status: ProposalStatus | None = None,
+        base_strategy_id: KosId | None = None,
+        limit: int = 50,
+    ) -> list[StrategyChangeProposal]
+    async def update_status(
+        self, kos_id: KosId, status: ProposalStatus
+    ) -> bool
+```
+
+<Warning>
+The OutcomeStore enforces append-only semantics. There is no `update_outcome` or `delete_outcome` method. This is a safety guarantee — the system never loses feedback data, ensuring every adaptation decision is fully auditable.
+</Warning>
+
 ## Next Steps
 
 <CardGroup cols={2}>
+  <Card title="Adaptive Cognitive Plane" icon="arrows-rotate" href="/architecture/adaptive-cognitive-plane">
+    How these contracts power self-evolution
+  </Card>
   <Card title="Providers" icon="database" href="/architecture/providers">
     See provider implementations
   </Card>

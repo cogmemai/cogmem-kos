@@ -179,13 +179,35 @@ class MyVectorProvider(VectorSearchProvider):
         ...
 ```
 
+## Adaptive Cognitive Plane Providers
+
+The ACP introduces three new contracts that providers must implement:
+
+| Contract | Enterprise Provider | Solo Provider |
+|----------|-------------------|---------------|
+| `StrategyStore` | Postgres | SurrealDB |
+| `OutcomeStore` | Postgres | SurrealDB |
+| `ProposalStore` | Postgres | SurrealDB |
+
+### Additional Tables (Both Modes)
+
+| Table | Description |
+|-------|-------------|
+| `memory_strategies` | Versioned knowledge organization hypotheses |
+| `outcome_events` | Append-only feedback signals (never deleted) |
+| `strategy_change_proposals` | Proposed restructuring with rationale and risk |
+
+<Warning>
+The `outcome_events` table must enforce append-only semantics at the provider level. No UPDATE or DELETE operations should be permitted on this table.
+</Warning>
+
 ## Next Steps
 
 <CardGroup cols={2}>
+  <Card title="Adaptive Cognitive Plane" icon="arrows-rotate" href="/architecture/adaptive-cognitive-plane">
+    How providers power self-evolution
+  </Card>
   <Card title="Agents" icon="robot" href="/architecture/agents">
     Learn about the agent subsystem
-  </Card>
-  <Card title="Retrieval Plans" icon="route" href="/architecture/retrieval-plans">
-    See retrieval strategies
   </Card>
 </CardGroup>

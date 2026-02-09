@@ -1,5 +1,6 @@
 """Entity model - extracted named entities."""
 
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -26,16 +27,25 @@ class EntityType(str, Enum):
 class Entity(BaseModel):
     """An extracted named entity.
 
-    Entities are nodes in the knowledge graph, linked to passages
-    via MENTIONS relationships.
+    Entities are canonical representations of people, projects, concepts,
+    tools, or places. They are nodes in the knowledge graph, linked to
+    passages via MENTIONS relationships and to claims as subjects.
     """
 
     kos_id: KosId = Field(..., description="Stable global identifier")
     tenant_id: TenantId = Field(..., description="Tenant identifier")
     user_id: UserId = Field(..., description="User identifier")
     name: str = Field(..., description="Canonical entity name")
-    type: EntityType = Field(..., description="Entity type")
+    entity_type: EntityType = Field(..., description="Entity type")
     aliases: list[str] = Field(default_factory=list, description="Alternative names")
+    created_from: list[KosId] = Field(
+        default_factory=list,
+        description="Passage IDs that led to this entity's creation",
+    )
+    last_updated_at: datetime | None = Field(
+        None,
+        description="When this entity was last updated with new information",
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {

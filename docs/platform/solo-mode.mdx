@@ -1,12 +1,12 @@
 ---
 title: "Solo Mode"
-description: "Run cogmem-kos with SurrealDB only"
+description: "Run CogMem with SurrealDB only"
 icon: "user"
 ---
 
 # Solo Mode
 
-Solo mode allows cogmem-kos to run using **SurrealDB only**, providing a simpler deployment option.
+Solo mode allows CogMem to run using **SurrealDB only**, providing a simpler deployment option ideal for personal knowledge systems.
 
 ## Overview
 
@@ -107,9 +107,18 @@ Solo mode creates these tables in SurrealDB:
 | `items` | Ingested documents |
 | `passages` | Chunked text with embeddings |
 | `entities` | Extracted named entities |
-| `artifacts` | Generated content |
-| `agent_actions` | Agent provenance logs |
+| `claims` | Structured assertions with evidence |
+| `artifacts` | Generated content (dossiers, timelines, reports) |
+| `kernel_events` | Kernel decision logs |
 | `outbox_events` | Event queue |
+
+### Adaptive Cognitive Plane Tables
+
+| Table | Description |
+|-------|-------------|
+| `memory_strategies` | Versioned knowledge organization hypotheses |
+| `outcome_events` | Append-only feedback signals (never deleted) |
+| `strategy_change_proposals` | Proposed restructuring with rationale and risk |
 
 ### Graph Edges
 

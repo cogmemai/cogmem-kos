@@ -46,7 +46,7 @@ npm i -g mintlify
 Run from the `docs/` directory:
 
 ```bash
-mintlify dev
+cogmem-kos addresses the critical gap in current LLM agent systems: the lack of persistent, user-specific memory
 ```
 
 View at http://localhost:3000

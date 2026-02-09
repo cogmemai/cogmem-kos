@@ -1,118 +1,114 @@
 ---
-title: "Agents"
-description: "Personal planning agent and event-driven agent subsystem"
-icon: "robot"
+title: "Knowledge Kernel"
+description: "The cognitive core that governs knowledge lifecycle"
+icon: "brain"
 ---
 
-# Agent Subsystem
+# Knowledge Kernel
 
-At the heart of cogmem-kos is the **Personal Planning Agent**—a cognitive agent with persistent, user-specific memory that orchestrates other specialized agents to complete complex tasks. This architecture addresses the critical limitation of current multi-agent frameworks: the lack of memory that enables learning and adaptation.
+At the heart of CogMem is the **Knowledge Kernel**—a persistent, deterministic system responsible for how memory is formed, structured, and maintained. The kernel is not an agent that generates text; it governs the knowledge lifecycle.
 
-## The Personal Planning Agent
+The kernel operates according to the active **MemoryStrategy** resolved by the Adaptive Cognitive Plane. While the kernel itself is deterministic, the strategy that governs its behavior can evolve over time based on observed outcomes.
 
-The personal planning agent is the **central orchestrator** of the cogmem-kos framework. Unlike traditional multi-agent systems that pass entire conversation histories through prompts, our planning agent:
+## What the Kernel Does
+
+The Knowledge Kernel sits beneath agents and tools, governing how information becomes knowledge and how that knowledge evolves:
 
 <CardGroup cols={2}>
-  <Card title="Persistent Memory" icon="brain">
-    Maintains user-specific knowledge that persists across sessions
+  <Card title="Admission Control" icon="filter">
+    Deciding what information is worth remembering
   </Card>
-  <Card title="Contextual Planning" icon="map">
-    Uses past experiences to create better action plans
+  <Card title="Transformation" icon="arrows-rotate">
+    Promoting raw data into structured representations (Claims)
   </Card>
-  <Card title="Agent Orchestration" icon="sitemap">
-    Coordinates specialized agents to execute complex tasks
+  <Card title="Conflict Tracking" icon="code-branch">
+    Identifying and retaining competing claims
   </Card>
-  <Card title="Self-Improvement" icon="chart-line">
-    Learns from completed actions to enhance future performance
+  <Card title="Maintenance" icon="wrench">
+    Merging, decaying, refreshing, and reinforcing memories
   </Card>
 </CardGroup>
 
 ```python
-from kos.agents.planning.personal_planning_agent import PersonalPlanningAgent
+from kos.kernel import KnowledgeKernel
+from kos.core.acp.strategy_resolver import StrategyResolver
 
-agent = PersonalPlanningAgent(
+resolver = StrategyResolver(strategy_store=strategy_store)
+strategy = await resolver.resolve(tenant_id="my-tenant")
+
+kernel = KnowledgeKernel(
     object_store=object_store,
     outbox_store=outbox_store,
-    memory_store=memory_store,
-    llm_gateway=llm_gateway,
+    claim_store=claim_store,
+    strategy=strategy,  # Strategy-aware kernel
 )
 
-# Plan and execute a complex task
-plan = await agent.create_plan(user_id, task_description)
-result = await agent.execute_plan(plan)
+# Process incoming information through the kernel
+await kernel.ingest(item)
+await kernel.extract_claims(passage_ids)
+await kernel.detect_conflicts(entity_id)
 ```
 
-## Design Principles
+## Kernel Event Model
+
+The kernel logs all decisions as events for debugging, visualization, and evaluation:
 
 <CardGroup cols={2}>
   <Card title="Event-Driven" icon="bolt">
-    Agents consume events from the outbox and emit new events
+    All kernel decisions emit events to the outbox
   </Card>
   <Card title="Idempotent" icon="repeat">
     Operations can be safely retried on failure
   </Card>
   <Card title="Provenance" icon="clock-rotate-left">
-    Every action is logged for traceability
+    Every decision is logged for traceability
   </Card>
-  <Card title="Composable" icon="puzzle-piece">
-    Agents can be chained via event types
+  <Card title="Inspectable" icon="magnifying-glass">
+    Event stream can be queried and visualized
   </Card>
 </CardGroup>
 
-## Event Types
+## Kernel Event Types
 
 ```python
-class EventType(str, Enum):
-    ITEM_UPSERTED = "item_upserted"
-    ITEM_DELETED = "item_deleted"
-    PASSAGES_CREATED = "passages_created"
-    ENTITIES_EXTRACTED = "entities_extracted"
-    VECTORS_CREATED = "vectors_created"
-    TEXT_INDEXED = "text_indexed"
-    ENTITY_PAGE_DIRTY = "entity_page_dirty"
+class KernelEventType(str, Enum):
+    # Ingestion events
+    ITEM_INGESTED = "item_ingested"
+    PASSAGE_EXTRACTED = "passage_extracted"
+    
+    # Knowledge formation events
+    ENTITY_LINKED = "entity_linked"
+    CLAIM_PROPOSED = "claim_proposed"
+    CLAIM_ACCEPTED = "claim_accepted"
+    CLAIM_CONFLICT_DETECTED = "claim_conflict_detected"
+    
+    # Artifact events
+    ARTIFACT_GENERATED = "artifact_generated"
 ```
 
-## Core Agents
+## Agent Subsystem
 
-### PersonalPlanningAgent
-
-The central orchestrator that plans and coordinates other agents.
-
-| Property | Value |
-|----------|-------|
-| **Consumes** | `TASK_REQUESTED`, `PLAN_STEP_COMPLETED` |
-| **Emits** | `PLAN_CREATED`, `AGENT_DISPATCHED` |
-| **Writes to** | ObjectStore (plans, memories) |
-
-```python
-from kos.agents.planning.personal_planning_agent import PersonalPlanningAgent
-
-agent = PersonalPlanningAgent(
-    object_store=object_store,
-    outbox_store=outbox_store,
-    memory_store=memory_store,
-    llm_gateway=llm_gateway,
-)
-```
+Agents interact through the kernel but do not own memory themselves. The kernel coordinates specialized agents:
 
 ### ChunkAgent
 
-Splits items into passages.
+Splits items into passages. Chunking parameters are governed by the active MemoryStrategy's `document_policy`.
 
 | Property | Value |
 |----------|-------|
 | **Consumes** | `ITEM_UPSERTED` |
 | **Emits** | `PASSAGES_CREATED` |
 | **Writes to** | ObjectStore (passages) |
+| **Strategy-aware** | `document_policy.chunking_mode`, `chunk_size`, `overlap` |
 
 ```python
 from kos.agents.ingest.chunk_agent import ChunkAgent
 
+# ChunkAgent reads document_policy from the resolved strategy
 agent = ChunkAgent(
     object_store=object_store,
     outbox_store=outbox_store,
-    chunk_size=500,
-    chunk_overlap=50,
+    strategy_resolver=strategy_resolver,
 )
 ```
 
@@ -180,60 +176,59 @@ agent = EntityExtractAgent(
 )
 ```
 
-### WikipediaPageAgent
+### ClaimExtractAgent
 
-Builds entity page artifacts.
+Extracts structured claims from passages.
 
 | Property | Value |
 |----------|-------|
-| **Consumes** | `ENTITY_PAGE_DIRTY` |
-| **Emits** | None |
-| **Writes to** | ObjectStore (artifacts) |
+| **Consumes** | `PASSAGES_CREATED` |
+| **Emits** | `CLAIM_PROPOSED` |
+| **Writes to** | ObjectStore (claims) |
 
 ```python
-from kos.agents.curate.wikipedia_page_agent import WikipediaPageAgent
+from kos.agents.extract.claim_extract_agent import ClaimExtractAgent
 
-agent = WikipediaPageAgent(
+agent = ClaimExtractAgent(
     object_store=object_store,
     outbox_store=outbox_store,
-    graph_search=graph_search,
-    llm_gateway=llm_gateway,  # Optional for summaries
+    llm_gateway=llm_gateway,
 )
 ```
 
-## Agent Pipeline
+## Knowledge Formation Pipeline
 
-The Personal Planning Agent sits at the top of the hierarchy, orchestrating specialized agents:
+The Knowledge Kernel orchestrates the transformation of raw data into structured knowledge:
 
 ```
-                    TASK_REQUESTED
+                    ITEM_INGESTED
                           │
                           ▼
                ┌─────────────────────┐
-               │ PersonalPlanningAgent│
-               │   (orchestrator)    │
+               │   Knowledge Kernel  │
+               │  (admission control)│
                └─────────────────────┘
                           │
-            ┌─────────────┼─────────────┐
-            ▼             ▼             ▼
-      ITEM_UPSERTED  QUERY_NEEDED  ANALYSIS_NEEDED
-            │
-            ▼
-    ┌─────────────┐
-    │ ChunkAgent  │
-    └─────────────┘
-            │
-            ▼
-    PASSAGES_CREATED
-            │
-     ┌──────┼──────┬──────────────┐
-     ▼      ▼      ▼              ▼
-┌────────┐┌────────┐┌──────────────┐
-│ Embed  ││ Index  ││ EntityExtract│
-└────────┘└────────┘└──────────────┘
-     │      │              │
-     ▼      ▼              ▼
-VECTORS  TEXT_IDX   ENTITIES_EXTRACTED
+                          ▼
+                  PASSAGE_EXTRACTED
+                          │
+     ┌────────────────────┼────────────────────┐
+     ▼                    ▼                    ▼
+┌──────────┐       ┌──────────────┐     ┌──────────────┐
+│  Embed   │       │EntityExtract │     │ ClaimExtract │
+└──────────┘       └──────────────┘     └──────────────┘
+     │                    │                    │
+     ▼                    ▼                    ▼
+VECTORS_CREATED    ENTITY_LINKED        CLAIM_PROPOSED
+                                               │
+                                               ▼
+                                    ┌─────────────────────┐
+                                    │   Conflict Detection│
+                                    └─────────────────────┘
+                                               │
+                              ┌────────────────┴────────────────┐
+                              ▼                                 ▼
+                      CLAIM_ACCEPTED              CLAIM_CONFLICT_DETECTED
 ```
 
 ## Running Workers
@@ -279,8 +274,11 @@ class MyCustomAgent(BaseAgent):
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Retrieval Plans" icon="route" href="/architecture/retrieval-plans">
-    See how agents feed retrieval
+  <Card title="Adaptive Cognitive Plane" icon="arrows-rotate" href="/architecture/adaptive-cognitive-plane">
+    How the system evolves its own strategies
+  </Card>
+  <Card title="Knowledge Workflows" icon="route" href="/architecture/knowledge-workflows">
+    See how knowledge becomes artifacts
   </Card>
   <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
     Explore the API

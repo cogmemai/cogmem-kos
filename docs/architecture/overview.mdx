@@ -1,12 +1,12 @@
 ---
 title: "Architecture Overview"
-description: "Understanding the cogmem-kos system design"
+description: "Understanding the CogMem system design — a self-evolving knowledge architecture"
 icon: "sitemap"
 ---
 
 # Architecture Overview
 
-cogmem-kos is designed as a **framework-agnostic knowledge layer** that any AI agent can plug into.
+CogMem is designed as a **framework-agnostic, self-evolving knowledge layer** that any AI agent can plug into. At its core is the **Knowledge Kernel** — a deterministic system that governs how information becomes knowledge. Above it sits the **Adaptive Cognitive Plane (ACP)** — a control layer that learns how to organize that knowledge more effectively over time.
 
 ## Design Principles
 
@@ -23,28 +23,43 @@ cogmem-kos is designed as a **framework-agnostic knowledge layer** that any AI a
   <Card title="Multi-Tenant" icon="users">
     Every object scoped by tenant_id for isolation
   </Card>
+  <Card title="Structure as Hypothesis" icon="flask">
+    Every structural choice is a testable hypothesis, not a fixed decision
+  </Card>
+  <Card title="Safe Self-Evolution" icon="shield-halved">
+    All structural changes are proposed, reversible, and auditable
+  </Card>
 </CardGroup>
 
 ## System Layers
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    API Layer                            │
-│              FastAPI HTTP + MCP Server                  │
+│                    API Layer                             │
+│              FastAPI HTTP + MCP Server                   │
 ├─────────────────────────────────────────────────────────┤
-│                  Retrieval Plans                        │
-│     SearchFirst │ WikipediaPage │ SemanticFirst        │
+│             Adaptive Cognitive Plane (ACP)               │
+│  Meta-Kernel │ StrategyResolver │ RestructuringExecutor  │
 ├─────────────────────────────────────────────────────────┤
-│                    Contracts                            │
-│  ObjectStore │ TextSearch │ VectorSearch │ GraphSearch │
+│                Knowledge Workflows                       │
+│   EntityDossier │ TimelineBuilder │ ContradictionReport  │
 ├─────────────────────────────────────────────────────────┤
-│                    Providers                            │
-│   Postgres │ OpenSearch │ Neo4j │ Qdrant │ SurrealDB   │
+│                  Knowledge Kernel                        │
+│    Admission │ Transformation │ Conflict │ Maintenance  │
 ├─────────────────────────────────────────────────────────┤
-│                  Agent Subsystem                        │
-│   ChunkAgent │ EmbedAgent │ EntityExtract │ IndexText  │
+│                    Contracts                             │
+│  ObjectStore │ StrategyStore │ OutcomeStore │ TextSearch │
+│  VectorSearch │ GraphSearch │ ProposalStore              │
+├─────────────────────────────────────────────────────────┤
+│                    Providers                             │
+│   Postgres │ OpenSearch │ Neo4j │ Qdrant │ SurrealDB    │
+├─────────────────────────────────────────────────────────┤
+│                  Agent Subsystem                         │
+│  ChunkAgent │ EmbedAgent │ EntityExtract │ ClaimExtract │
 └─────────────────────────────────────────────────────────┘
 ```
+
+The **Adaptive Cognitive Plane** is the key addition. It observes how the system performs, evaluates whether the current memory strategy is effective, and proposes structural changes when it detects a better approach — all safely and reversibly.
 
 ## Data Flow
 
@@ -53,16 +68,18 @@ cogmem-kos is designed as a **framework-agnostic knowledge layer** that any AI a
 ```mermaid
 sequenceDiagram
     participant API
+    participant StrategyResolver
     participant ObjectStore
     participant Outbox
     participant ChunkAgent
     participant EmbedAgent
     participant IndexAgent
 
+    API->>StrategyResolver: Resolve active strategy
     API->>ObjectStore: Save Item
     API->>Outbox: ITEM_UPSERTED event
-    ChunkAgent->>Outbox: Consume event
-    ChunkAgent->>ObjectStore: Save Passages
+    ChunkAgent->>StrategyResolver: Get document_policy
+    ChunkAgent->>ObjectStore: Save Passages (strategy-aware chunking)
     ChunkAgent->>Outbox: PASSAGES_CREATED event
     EmbedAgent->>Outbox: Consume event
     EmbedAgent->>VectorStore: Upsert embeddings
@@ -76,19 +93,47 @@ sequenceDiagram
 sequenceDiagram
     participant Client
     participant API
-    participant RetrievalPlan
+    participant StrategyResolver
+    participant Workflow
     participant TextSearch
     participant ObjectStore
     participant GraphSearch
 
     Client->>API: POST /search
-    API->>RetrievalPlan: Execute SearchFirst
-    RetrievalPlan->>TextSearch: Lexical search
-    TextSearch-->>RetrievalPlan: Hits with highlights
-    RetrievalPlan->>ObjectStore: Hydrate objects
-    RetrievalPlan->>GraphSearch: Expand entities
-    RetrievalPlan-->>API: Combined results
-    API-->>Client: JSON response
+    API->>StrategyResolver: Resolve retrieval_policy
+    API->>Workflow: Execute with strategy
+    Workflow->>TextSearch: Lexical search
+    TextSearch-->>Workflow: Hits with highlights
+    Workflow->>ObjectStore: Hydrate objects
+    Workflow->>GraphSearch: Expand entities
+    Workflow-->>API: Combined results
+    API-->>Client: JSON response + OutcomeEvent emitted
+```
+
+### Self-Evolution Flow
+
+```mermaid
+sequenceDiagram
+    participant OutcomeStore
+    participant MetaKernel
+    participant ProposalStore
+    participant Executor
+    participant StrategyStore
+
+    MetaKernel->>OutcomeStore: Aggregate recent outcomes
+    MetaKernel->>MetaKernel: Evaluate strategy effectiveness
+    MetaKernel->>ProposalStore: Save StrategyChangeProposal
+    Note over ProposalStore: Proposal reviewed (auto or human)
+    Executor->>ProposalStore: Get approved proposals
+    Executor->>StrategyStore: Apply new strategy
+    Executor->>Executor: Trigger restructuring (rechunk, reindex)
+    Note over Executor: Evaluation window begins
+    Executor->>OutcomeStore: Monitor new outcomes
+    alt Improvement confirmed
+        Executor->>StrategyStore: Confirm new strategy
+    else Regression detected
+        Executor->>StrategyStore: Rollback to base strategy
+    end
 ```
 
 ## Core Domain Objects
@@ -96,10 +141,14 @@ sequenceDiagram
 | Object | Description | Key Fields |
 |--------|-------------|------------|
 | **Item** | Source document | kos_id, tenant_id, title, content_text, source |
-| **Passage** | Text chunk | kos_id, item_id, text, span, sequence |
-| **Entity** | Named entity | kos_id, name, type, aliases |
-| **Artifact** | Generated content | kos_id, artifact_type, source_ids, text |
-| **AgentAction** | Provenance log | kos_id, agent_id, inputs, outputs |
+| **Passage** | Text chunk | kos_id, item_id, text, span, extraction_method, confidence |
+| **Entity** | Named entity | kos_id, name, entity_type, aliases, created_from |
+| **Claim** | Structured assertion | kos_id, subject_entity_id, predicate, object, evidence_passage_ids, confidence, conflicts_with |
+| **Artifact** | Generated content | kos_id, artifact_type, workflow_id, entity_scope, claim_ids, rendered_content |
+| **KernelEvent** | Kernel decision log | kos_id, event_type, payload, created_at |
+| **MemoryStrategy** | Self-evolving knowledge config | kos_id, scope_type, retrieval_policy, document_policy, vector_policy, graph_policy, claim_policy |
+| **OutcomeEvent** | Feedback signal | kos_id, strategy_id, outcome_type, metrics, source |
+| **StrategyChangeProposal** | Proposed restructuring | kos_id, base_strategy_id, proposed_strategy_id, risk_level, status |
 
 ## Import Rules
 
@@ -110,21 +159,22 @@ These rules are strictly enforced:
 - **Agents** must only import core and contracts
 - **Providers** must NOT import FastAPI
 - **Adapters** wrap external frameworks (LangChain, CrewAI, etc.)
+- **ACP services** must only import core contracts and models — never providers directly
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
+  <Card title="Adaptive Cognitive Plane" icon="arrows-rotate" href="/architecture/adaptive-cognitive-plane">
+    How the system evolves itself
+  </Card>
+  <Card title="Knowledge Kernel" icon="brain" href="/architecture/agents">
+    Explore the cognitive core
+  </Card>
   <Card title="Contracts" icon="file-contract" href="/architecture/contracts">
     Learn about core interfaces
   </Card>
-  <Card title="Providers" icon="database" href="/architecture/providers">
-    Understand provider implementations
-  </Card>
-  <Card title="Agents" icon="robot" href="/architecture/agents">
-    Explore the agent subsystem
-  </Card>
-  <Card title="Retrieval Plans" icon="route" href="/architecture/retrieval-plans">
-    See retrieval strategies
+  <Card title="Knowledge Workflows" icon="route" href="/architecture/knowledge-workflows">
+    See workflow strategies
   </Card>
 </CardGroup>

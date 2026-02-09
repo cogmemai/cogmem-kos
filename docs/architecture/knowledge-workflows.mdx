@@ -1,0 +1,271 @@
+---
+title: "Knowledge Workflows"
+description: "Repeatable strategies for transforming knowledge into artifacts"
+icon: "route"
+---
+
+# Knowledge Workflows
+
+Instead of ad-hoc retrieval, CogMem introduces **Knowledge Workflows**—repeatable, strategy-aware operations for transforming stored knowledge into useful artifacts.
+
+A workflow is a first-class, versioned, and inspectable operation that:
+- Declares inputs
+- Resolves the active **MemoryStrategy** for its scope
+- Runs deterministic steps governed by that strategy
+- Produces an Artifact
+- Emits **OutcomeEvents** so the Adaptive Cognitive Plane can learn from results
+
+## Core Workflows
+
+<CardGroup cols={3}>
+  <Card title="Entity Dossier" icon="book">
+    Wikipedia-style page from claims + evidence
+  </Card>
+  <Card title="Timeline Builder" icon="clock">
+    Order claims/events over time
+  </Card>
+  <Card title="Contradiction Report" icon="code-branch">
+    Surface conflicting claims for review
+  </Card>
+</CardGroup>
+
+## Entity Dossier Workflow
+
+Builds a Wikipedia-style page from claims and evidence for a given entity.
+
+### Flow
+
+```
+Input: entity_id + tenant_id
+         │
+         ▼
+┌─────────────────────┐
+│  Fetch Entity       │  ← Get canonical entity
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Gather Claims      │  ← All claims where entity is subject
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Hydrate Evidence   │  ← Get supporting passages
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Render Artifact    │  ← Generate dossier content
+└─────────────────────┘
+         │
+         ▼
+Output: Artifact (entity_dossier)
+```
+
+### Usage
+
+```python
+from kos.workflows import EntityDossierWorkflow, EntityDossierRequest
+
+workflow = EntityDossierWorkflow(
+    object_store=object_store,
+    claim_store=claim_store,
+    graph_search=graph_search,
+)
+
+request = EntityDossierRequest(
+    entity_id="entity-123",
+    tenant_id="tenant-1",
+    include_conflicts=True,
+)
+
+artifact = await workflow.execute(request)
+```
+
+### Response
+
+```json
+{
+  "kos_id": "artifact-abc",
+  "artifact_type": "entity_dossier",
+  "workflow_id": "entity_dossier_v1",
+  "entity_scope": ["entity-123"],
+  "claim_ids": ["claim-1", "claim-2", "claim-3"],
+  "rendered_content": "# Andrew Ng\n\n## Known Facts\n- **works_at**: Stanford University\n- **founded**: Coursera\n\n## Evidence\n...",
+  "created_at": "2026-02-06T14:15:00Z"
+}
+```
+
+## Timeline Builder Workflow
+
+Orders claims and events over time for a given entity or topic.
+
+### Flow
+
+```
+Input: entity_id + tenant_id + time_range
+         │
+         ▼
+┌─────────────────────┐
+│  Gather Claims      │  ← Claims with timestamps
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Sort by Time       │  ← Temporal ordering
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Render Timeline    │  ← Generate timeline artifact
+└─────────────────────┘
+         │
+         ▼
+Output: Artifact (timeline)
+```
+
+### Usage
+
+```python
+from kos.workflows import TimelineBuilderWorkflow, TimelineBuilderRequest
+
+workflow = TimelineBuilderWorkflow(
+    object_store=object_store,
+    claim_store=claim_store,
+)
+
+request = TimelineBuilderRequest(
+    entity_id="entity-123",
+    tenant_id="tenant-1",
+    start_date="2024-01-01",
+    end_date="2026-02-01",
+)
+
+artifact = await workflow.execute(request)
+```
+
+## Contradiction Report Workflow
+
+Surfaces conflicting claims for a given entity, enabling review and resolution.
+
+### Flow
+
+```
+Input: entity_id + tenant_id
+         │
+         ▼
+┌─────────────────────┐
+│  Gather Claims      │  ← All claims for entity
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Find Conflicts     │  ← Same predicate, different object
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Hydrate Evidence   │  ← Get supporting passages for each
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Render Report      │  ← Generate contradiction report
+└─────────────────────┘
+         │
+         ▼
+Output: Artifact (contradiction_report)
+```
+
+### Usage
+
+```python
+from kos.workflows import ContradictionReportWorkflow, ContradictionReportRequest
+
+workflow = ContradictionReportWorkflow(
+    object_store=object_store,
+    claim_store=claim_store,
+)
+
+request = ContradictionReportRequest(
+    entity_id="entity-123",
+    tenant_id="tenant-1",
+)
+
+artifact = await workflow.execute(request)
+```
+
+### Response
+
+```json
+{
+  "kos_id": "artifact-xyz",
+  "artifact_type": "contradiction_report",
+  "entity_scope": ["entity-123"],
+  "rendered_content": "# Contradictions for Andrew Ng\n\n## works_at\n- **Claim 1**: Stanford University (confidence: 0.9)\n  - Evidence: \"Dr. Ng is a professor at Stanford...\"\n- **Claim 2**: Google (confidence: 0.7)\n  - Evidence: \"Andrew Ng leads AI at Google...\"\n",
+  "created_at": "2026-02-06T14:15:00Z"
+}
+```
+
+## Choosing a Workflow
+
+| Use Case | Recommended Workflow |
+|----------|----------------------|
+| Entity exploration | Entity Dossier |
+| Project history | Timeline Builder |
+| Data quality review | Contradiction Report |
+| Decision audit | Timeline Builder + Contradiction Report |
+
+## Workflow Architecture
+
+All workflows share a common structure:
+
+```python
+from kos.core.acp.strategy_resolver import StrategyResolver
+
+class BaseWorkflow:
+    """Base class for all knowledge workflows."""
+    
+    workflow_id: str  # Unique identifier for versioning
+    
+    def __init__(self, strategy_resolver: StrategyResolver, **kwargs):
+        self._resolver = strategy_resolver
+    
+    async def execute(self, request: WorkflowRequest) -> Artifact:
+        """Execute the workflow and produce an artifact.
+        
+        The workflow resolves the active MemoryStrategy before execution,
+        using it to configure retrieval mode, top_k, and other parameters.
+        After execution, an OutcomeEvent is emitted so the ACP can learn.
+        """
+        strategy = await self._resolver.resolve(
+            tenant_id=request.tenant_id,
+            workflow_id=self.workflow_id,
+        )
+        return await self._run(request, strategy)
+    
+    def validate_inputs(self, request: WorkflowRequest) -> None:
+        """Validate workflow inputs before execution."""
+        pass
+```
+
+Workflows are:
+- **First-class** — stored and versioned in the system
+- **Inspectable** — inputs, outputs, and steps are logged
+- **Composable** — workflows can call other workflows
+- **Strategy-aware** — governed by the active MemoryStrategy
+- **Outcome-emitting** — every execution produces feedback for the ACP
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Adaptive Cognitive Plane" icon="arrows-rotate" href="/architecture/adaptive-cognitive-plane">
+    How workflows feed the self-evolution loop
+  </Card>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
+    See how workflows are exposed via API
+  </Card>
+  <Card title="Entity Pages Cookbook" icon="book-open" href="/cookbooks/entity-pages">
+    Build entity dossiers
+  </Card>
+</CardGroup>

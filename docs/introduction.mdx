@@ -1,52 +1,178 @@
 ---
-title: "Welcome to cogmem-kos"
-description: "Framework-agnostic Knowledge Operating System kernel with a personalized planning agent at its core"
+title: "CogMem: A Self-Evolving Knowledge Operating System"
+description: "A cognitive system that transforms messy personal data into structured, inspectable, and reusable knowledge — and learns to do it better over time"
 icon: "house"
 ---
 
-# Build with cogmem-kos
+# CogMem: A Self-Evolving Knowledge Operating System
 
-A multi-agent framework centered around a **personalized planning agent** with cognitive memory. cogmem-kos addresses the critical gap in current LLM agent systems: the lack of persistent, user-specific memory that enables agents to learn and improve over time.
+Most LLM memory systems focus on recall.
+
+**CogMem focuses on knowledge formation — and learns how to do it better over time.**
+
+CogMem is a Personal Knowledge Operating System (KOS): a long-running cognitive system that ingests messy personal data—notes, documents, conversations, web content—and incrementally transforms it into structured, inspectable, and reusable knowledge.
+
+What makes CogMem unique is that it doesn't just store knowledge — it **evolves how it organizes, retrieves, and restructures knowledge** based on observed outcomes. The system learns which memory strategies work best for your domain and adapts its own data structures accordingly.
 
 <CardGroup cols={2}>
   <Card title="Quick Start" icon="rocket" href="/quickstart">
     Get up and running in 5 minutes
   </Card>
-  <Card title="Agent Subsystem" icon="robot" href="/architecture/agents">
-    Explore the personal planning agent
+  <Card title="Knowledge Kernel" icon="brain" href="/architecture/agents">
+    Explore the cognitive core
+  </Card>
+  <Card title="Adaptive Cognitive Plane" icon="arrows-rotate" href="/architecture/adaptive-cognitive-plane">
+    How the system evolves itself
   </Card>
   <Card title="Architecture" icon="sitemap" href="/architecture/overview">
-    Understand how cogmem-kos works
-  </Card>
-  <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
-    Explore the REST API
+    Understand how CogMem works
   </Card>
 </CardGroup>
 
-## What is cogmem-kos?
+## Why CogMem Exists
 
-cogmem-kos is a **Knowledge Operating System kernel** built around a central insight: LLM agents need personalized memory to plan effectively. At its heart is the **Personal Planning Agent**—a cognitive agent with its own memory database that orchestrates other agents to complete complex tasks.
+LLMs are powerful, but their default memory model is fragile:
 
-### The Personal Planning Agent
+- **Context windows are short**
+- **Chat history is unstructured**
+- **Important facts are overwritten or forgotten**
+- **Contradictions accumulate silently**
+- **Knowledge is not inspectable or explainable**
+- **Memory strategies are fixed** — the same approach is used regardless of domain
 
-The personal planning agent is the **central orchestrator** of the cogmem-kos framework. Unlike traditional multi-agent systems that pass entire conversation histories through prompts, our planning agent:
+CogMem addresses this by introducing a **Knowledge Kernel** that governs how information becomes knowledge, and an **Adaptive Cognitive Plane** that learns how to organize that knowledge more effectively over time.
 
-- **Maintains persistent memory** - User-specific knowledge that persists across sessions
-- **Plans with context** - Uses past experiences to create better action plans
-- **Orchestrates agents** - Coordinates specialized agents (chunking, embedding, extraction) to execute tasks
-- **Self-improves over time** - Learns from completed actions to enhance future performance
+## The Knowledge Kernel
 
-This architecture reduces token consumption, improves task success rates, and enables coherent long-term strategies.
+At the center of CogMem is a **Knowledge Kernel**: a persistent, deterministic system responsible for how memory is formed, structured, and maintained.
 
-### Core Capabilities
+<Note>
+The Knowledge Kernel is not an agent.
+It does not generate text.
+It governs knowledge lifecycle.
+</Note>
 
-- **Agent Subsystem** - Event-driven agents with the personal planning agent at the center
-- **Cognitive Memory** - Personalized, persistent memory architecture for learning and adaptation
-- **Unified Retrieval** - Text search, vector search, and graph traversal through a single API
-- **Entity Graph** - Automatic entity extraction and Wikipedia-style entity pages
-- **Framework Agnostic** - Works with LangChain, CrewAI, AutoGen, or any framework
+The kernel is responsible for:
 
-## Deployment Modes
+- **Admission control** — deciding what information is worth remembering
+- **Transformation** — promoting raw data into structured representations
+- **Conflict tracking** — identifying and retaining competing claims
+- **Maintenance** — merging, decaying, refreshing, and reinforcing memories
+- **Governance** — tracking source, confidence, and scope of knowledge
+
+Agents interact through the kernel, but do not own memory themselves.
+
+## The Adaptive Cognitive Plane
+
+Above the Knowledge Kernel sits the **Adaptive Cognitive Plane (ACP)** — a self-evolving control layer that learns how to organize knowledge more effectively.
+
+<Warning>
+The ACP is advisory, not autonomous. Every structural change is proposed, evaluated, and reversible. The Knowledge Kernel remains deterministic and auditable at its core.
+</Warning>
+
+The ACP introduces three key capabilities:
+
+- **Memory Strategies** — explicit, versioned hypotheses about how to chunk, index, retrieve, and maintain knowledge for a given domain
+- **Outcome Signals** — feedback loops that capture how well the system performed (retrieval success, user corrections, latency, cost)
+- **Self-Restructuring** — safe, auditable changes to data structures when the system detects a better approach
+
+This means CogMem doesn't just store your knowledge — it **discovers the best way to store it** for your specific use case.
+
+### Structure as a Hypothesis
+
+Traditional systems treat their data structures as fixed. CogMem treats every structural choice — chunking strategy, retrieval mode, graph schema, claim predicates — as a **testable hypothesis**.
+
+| Component | Fixed Systems | CogMem |
+|-----------|--------------|--------|
+| Chunk size | Hardcoded at 500 chars | Adapts per domain based on retrieval outcomes |
+| Retrieval mode | Always vector search | Learns whether FTS, vector, graph, or hybrid works best |
+| Graph schema | Static edge types | Adds/removes edge types based on utilization |
+| Claim predicates | Developer-defined | Evolves based on what the data actually contains |
+
+### Safety by Design
+
+Self-evolving systems require strong safety guarantees. CogMem enforces:
+
+- **Every change is a proposal** — the Meta-Kernel proposes, it never executes directly
+- **Every change is reversible** — base strategies are preserved for rollback
+- **Every change is auditable** — all decisions emit kernel events with rationale
+- **Evaluation windows** — new strategies are observed before being confirmed
+- **No autonomous code modification** — ACP changes data structures, never code
+- **No opaque mutations** — every structural change is logged and explainable
+
+## Knowledge Formation Pipeline
+
+CogMem organizes personal data through a multi-stage pipeline:
+
+| Stage | Description |
+|-------|-------------|
+| **Items** | Raw ingested objects such as files, notes, emails, chat logs, or web pages |
+| **Passages** | Semantically meaningful fragments extracted from items (chunking strategy governed by active MemoryStrategy) |
+| **Entities** | Canonical representations of people, projects, concepts, tools, or places |
+| **Claims** | Structured assertions derived from passages, each with evidence and confidence |
+| **Artifacts** | Human-readable outputs such as personal wiki pages, timelines, briefings, or decision logs |
+
+Each stage is inspectable, auditable, and subject to restructuring by the Adaptive Cognitive Plane.
+
+## Evidence-First Memory
+
+CogMem treats **claims**, not text, as the core unit of memory.
+
+Every claim stores:
+
+- **Supporting passages** — the evidence
+- **Source** — user-asserted, inferred, or retrieved
+- **Timestamp** — when it was learned
+- **Confidence** — how certain the system is
+- **Conflicts** — other claims that contradict it
+
+<Warning>
+Contradictions are preserved, not overwritten.
+</Warning>
+
+This enables the system to explain *why* it believes something and *what evidence* supports it.
+
+## Knowledge Workflows
+
+Instead of ad-hoc retrieval, CogMem introduces **Knowledge Workflows** — repeatable strategies governed by the active MemoryStrategy.
+
+A workflow transforms stored knowledge into useful artifacts:
+
+- **Personal Wikipedia pages** — entity dossiers with facts and evidence
+- **Project timelines** — ordered claims/events over time
+- **Decision histories** — how and why decisions were made
+- **Cross-source summaries** — unified views across documents
+- **Contradiction reports** — surface conflicting claims for review
+
+Workflows are first-class, versioned, inspectable, and strategy-aware.
+
+## Inspectability by Design
+
+CogMem is designed to be **debuggable** — especially important for a self-evolving system.
+
+Developers and users can inspect:
+
+- Raw tables of items, passages, entities, and claims
+- Graph relationships between entities
+- Evidence trails for any conclusion
+- The event stream of kernel decisions
+- **Active memory strategies** and their version history
+- **Outcome signals** that triggered strategy changes
+- **Restructuring proposals** with rationale and risk assessment
+
+This makes CogMem suitable for research, long-term use, and explainable reasoning.
+
+## Solo Mode (Recommended)
+
+CogMem is designed to run as a personal system.
+
+In **Solo Mode**, all memory, embeddings, graph data, and strategy state can live locally in a single database, enabling:
+
+- **Privacy** — your data stays on your device
+- **Offline operation** — no cloud dependency
+- **Iterative experimentation** — rapid development cycles
+- **Dissertation-friendly evaluation** — reproducible research
+- **Local self-evolution** — the system adapts to your domain without cloud calls
 
 <CardGroup cols={2}>
   <Card title="Enterprise Mode" icon="building">
@@ -64,39 +190,27 @@ This architecture reduces token consumption, improves task success rates, and en
   </Card>
 </CardGroup>
 
-## Core Concepts
+## Framework-Agnostic by Design
 
-### Items & Passages
+CogMem does not replace agent frameworks—it supports them.
 
-**Items** are your source documents (emails, files, notes). They get chunked into **Passages** for search and embedding.
+LangGraph, CrewAI, or custom agents can interact with CogMem as clients, relying on the Knowledge Kernel to handle memory, structure, and recall consistently over time. The Adaptive Cognitive Plane works transparently beneath these integrations.
 
-### Entities
+## Summary
 
-Named entities (people, organizations, concepts) are extracted from passages and linked in a knowledge graph.
+CogMem is not a chat memory store.
+It is not a workflow engine.
 
-### Retrieval Plans
-
-Pre-built retrieval strategies that orchestrate multiple search backends:
-
-- **Search First** - Lexical search → hydrate → graph expansion
-- **Wikipedia Page** - Entity-centric view with facts and evidence
-- **Semantic First** - Vector search → rerank → hydrate
-
-## Why Personal Planning?
-
-Current multi-agent frameworks suffer from a critical limitation: they lack persistent memory. Each interaction starts fresh, requiring agents to rebuild context from scratch. This leads to:
-
-- **Excessive token consumption** - Entire conversation histories passed with each prompt
-- **Incoherent strategies** - Agents cannot maintain long-term plans
-- **No learning** - Past successes and failures are forgotten
-
-The personal planning agent solves these problems by maintaining a cognitive memory database specific to each user, enabling the framework to learn, adapt, and improve over time.
+**It is a self-evolving knowledge operating system** — a cognitive substrate that transforms unorganized personal data into structured, explainable, and evolving knowledge, and learns to do it better over time.
 
 ## Next Steps
 
-<CardGroup cols={2}>
-  <Card title="Agent Subsystem" icon="robot" href="/architecture/agents">
-    Deep dive into the personal planning agent
+<CardGroup cols={3}>
+  <Card title="Knowledge Kernel" icon="brain" href="/architecture/agents">
+    Deep dive into the cognitive core
+  </Card>
+  <Card title="Adaptive Cognitive Plane" icon="arrows-rotate" href="/architecture/adaptive-cognitive-plane">
+    How the system evolves itself
   </Card>
   <Card title="Quick Start" icon="play" href="/quickstart">
     Your first search

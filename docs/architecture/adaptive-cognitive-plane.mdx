@@ -1,0 +1,347 @@
+---
+title: "Adaptive Cognitive Plane"
+description: "How CogMem evolves its own knowledge structures safely and transparently"
+icon: "arrows-rotate"
+---
+
+# Adaptive Cognitive Plane
+
+The **Adaptive Cognitive Plane (ACP)** is what makes CogMem a self-evolving system. It is an additive control layer that sits above the Knowledge Kernel, observing how the system performs and learning how to organize knowledge more effectively over time.
+
+<Note>
+The ACP is not a rewrite of the Knowledge Kernel. The kernel remains deterministic, contract-driven, and auditable. The ACP is probabilistic, evaluative, and advisory.
+</Note>
+
+## Why Self-Evolution Matters
+
+Traditional knowledge systems treat their data structures as fixed: chunk size is hardcoded, retrieval mode is chosen once, graph schema is static. But different domains, projects, and users have fundamentally different knowledge patterns.
+
+A legal research corpus needs different chunking than a codebase. A personal journal needs different retrieval than a technical wiki. A fast-moving project needs different conflict thresholds than a stable reference library.
+
+**The ACP enables CogMem to discover the right structure for each context** — and to keep adapting as that context changes.
+
+## Core Concepts
+
+<CardGroup cols={2}>
+  <Card title="Memory Strategies" icon="chess">
+    Explicit, versioned hypotheses about how to organize knowledge
+  </Card>
+  <Card title="Outcome Signals" icon="signal">
+    Feedback loops that capture how well the system performed
+  </Card>
+  <Card title="Meta-Kernel" icon="brain">
+    Evaluates strategies and proposes improvements
+  </Card>
+  <Card title="Restructuring Executor" icon="hammer">
+    Safely applies approved structural changes
+  </Card>
+</CardGroup>
+
+## Memory Strategies
+
+A `MemoryStrategy` defines *how* knowledge should be represented, indexed, retrieved, and maintained for a given scope. Every structural choice is encoded as an explicit, auditable, and replaceable object.
+
+### What a Strategy Controls
+
+| Policy | Controls | Example Values |
+|--------|----------|----------------|
+| **Retrieval Policy** | How search is performed | `fts_first`, `vector_first`, `graph_first`, `hybrid` |
+| **Document Policy** | How items are chunked into passages | `semantic` / `paragraph` / `sentence`, chunk_size, overlap |
+| **Vector Policy** | Whether and how embeddings are used | enabled, embedding_model, reindex_threshold |
+| **Graph Policy** | Entity graph configuration | enabled, edge_types, constraint_level |
+| **Claim Policy** | How claims are extracted and maintained | predicate_set, conflict_threshold, decay_rules |
+| **Artifact Policy** | Which workflows run automatically | canonical_workflows list |
+
+### Scope Resolution
+
+Strategies can be scoped at multiple levels. The most specific scope wins:
+
+```
+Workflow → Project → Tenant → Global
+```
+
+If no custom strategy exists at any level, the built-in system default is used. This means the system always has a strategy, even on first boot.
+
+### Strategy Lifecycle
+
+```
+ACTIVE ──────────► DEPRECATED
+  │                     ▲
+  │                     │
+  ▼                     │
+EXPERIMENTAL ───────────┘
+  (evaluation window)
+```
+
+- **Active** — currently governing operations for its scope
+- **Experimental** — proposed by the Meta-Kernel, under evaluation
+- **Deprecated** — replaced by a newer version, preserved for rollback
+
+### Usage
+
+```python
+from kos.core.acp.strategy_resolver import StrategyResolver
+
+resolver = StrategyResolver(strategy_store=strategy_store)
+
+# Resolve the effective strategy for a context
+strategy = await resolver.resolve(
+    tenant_id="my-tenant",
+    project_id="my-project",
+)
+
+# Use the strategy to configure operations
+chunk_size = strategy.document_policy.chunk_size
+retrieval_mode = strategy.retrieval_policy.mode
+```
+
+## Outcome Signal Pipeline
+
+The ACP requires feedback to learn. **Outcome signals** capture how well the system performed on every operation.
+
+### Outcome Types
+
+| Outcome | Source | Meaning |
+|---------|--------|---------|
+| `RETRIEVAL_SATISFIED` | System | Search returned results the user engaged with |
+| `RETRIEVAL_FAILED` | System | Search returned no useful results |
+| `USER_CORRECTED` | User | User corrected a claim or entity |
+| `USER_ACCEPTED` | User | User confirmed an artifact or result |
+| `ARTIFACT_ACCEPTED` | User/Agent | Generated artifact was useful |
+| `ARTIFACT_REJECTED` | User/Agent | Generated artifact was not useful |
+| `AGENT_DISAGREEMENT` | Agent | Agents produced conflicting outputs |
+| `LATENCY_EXCEEDED` | System | Operation exceeded latency threshold |
+| `COST_THRESHOLD_EXCEEDED` | System | Operation exceeded token/cost budget |
+
+### Metrics
+
+Every outcome event carries quantitative metrics:
+
+- `latency_ms` — operation duration
+- `tokens_used` — LLM token consumption
+- `documents_touched` — number of passages retrieved
+- `graph_edges_traversed` — graph expansion depth
+- `conflict_count` — number of claim conflicts encountered
+
+<Warning>
+Outcome events are **append-only and never deleted**. This ensures a complete audit trail for every adaptation decision the system makes.
+</Warning>
+
+### Usage
+
+```python
+from kos.core.models.outcome_event import OutcomeEvent, OutcomeType, OutcomeSource
+
+outcome = OutcomeEvent(
+    kos_id=KosId("outcome-abc"),
+    tenant_id=TenantId("my-tenant"),
+    strategy_id=KosId("strategy-123"),
+    workflow_id="search_first",
+    outcome_type=OutcomeType.RETRIEVAL_SATISFIED,
+    source=OutcomeSource.SYSTEM,
+    metrics={
+        "latency_ms": 145,
+        "documents_touched": 12,
+        "tokens_used": 0,
+    },
+)
+await outcome_store.save_outcome(outcome)
+```
+
+## Meta-Kernel
+
+The **Meta-Kernel** is the decision-making core of the ACP. It aggregates outcome signals, evaluates strategy effectiveness, and generates restructuring proposals.
+
+<Note>
+**Enterprise Feature:** The full Meta-Kernel implementation with rule-based heuristics and LLM-augmented evaluation is available in the `cogmem-acp` enterprise package. The open-source `cogmem-kos` includes the abstract interface (`MetaKernelBase`) and a no-op stub.
+</Note>
+
+<Warning>
+The Meta-Kernel **never executes changes directly**. It only proposes. This is a critical safety boundary.
+</Warning>
+
+### How It Works
+
+1. **Aggregate** — collect recent OutcomeEvents for each active strategy
+2. **Evaluate** — apply heuristics to detect underperformance
+3. **Propose** — generate a `StrategyChangeProposal` with rationale and risk assessment
+4. **Wait** — proposals must be approved before execution
+
+### Evaluation Heuristics (Rule-Based)
+
+| Signal | Threshold | Action |
+|--------|-----------|--------|
+| High retrieval failure rate | ≥ 30% | Adjust retrieval_policy (switch to hybrid, increase top_k) |
+| High average latency | ≥ 2000ms | Reduce retrieval depth, disable reranking |
+| High conflict density | ≥ 50% | Raise conflict_threshold to filter low-confidence noise |
+| Low graph utilization | < 5% of queries | Consider disabling graph_policy |
+
+Future versions will augment these heuristics with LLM reasoning for qualitative evaluation.
+
+### Usage (Enterprise)
+
+```python
+# Enterprise: install cogmem-acp for the full implementation
+from kos_acp import create_enterprise_acp
+
+acp = create_enterprise_acp(
+    strategy_store=strategy_store,
+    outcome_store=outcome_store,
+    proposal_store=proposal_store,
+)
+
+proposals = await acp.meta_kernel.run_evaluation_cycle()
+
+for proposal in proposals:
+    print(f"Proposal: {proposal.change_summary}")
+    print(f"Risk: {proposal.risk_level.value}")
+```
+
+### Usage (Open Source)
+
+```python
+# Open source: use the no-op stub (strategies remain static)
+from kos.core.acp import NoOpMetaKernel
+
+meta = NoOpMetaKernel()
+proposals = await meta.run_evaluation_cycle()  # Always returns []
+```
+
+## Restructuring Executor
+
+The **Restructuring Executor** safely applies approved structural changes. It is the only component that mutates strategies and triggers re-indexing.
+
+### Supported Actions
+
+| Action | Description | Reversible |
+|--------|-------------|------------|
+| Re-chunk documents | Re-split items using new document_policy | Yes (old passages preserved) |
+| Re-embed passages | Generate new embeddings with different model | Yes (old vectors preserved) |
+| Add graph edge types | Introduce new relationship types | Yes |
+| Remove graph edge types | Remove unused relationship types | Yes |
+| Update claim predicates | Change allowed predicate set | Yes |
+| Prune low-value entities | Remove entities below confidence threshold | Yes (soft delete) |
+| Rebuild indexes | Recreate text/vector indexes | Yes |
+| Switch retrieval mode | Change primary retrieval approach | Yes |
+
+### Safety Guarantees
+
+<Warning>
+These safety rules are non-negotiable:
+
+- **All actions are idempotent** — safe to retry on failure
+- **Every mutation emits a KernelEvent** — full audit trail
+- **Rollback is always possible** — base strategy is preserved
+- **Evaluation windows** — new strategies are observed before confirmation
+- **No autonomous code modification** — ACP changes data structures, never code
+- **No opaque mutations** — every change is logged with rationale
+</Warning>
+
+### Execution Flow
+
+```
+Approved Proposal
+       │
+       ▼
+┌──────────────┐
+│ Plan Steps   │  ← Compare base vs proposed strategy
+└──────────────┘
+       │
+       ▼
+┌──────────────┐
+│ Execute Steps│  ← Idempotent, event-emitting
+└──────────────┘
+       │
+       ▼
+┌──────────────┐
+│ Activate New │  ← Deprecate old, activate new
+└──────────────┘
+       │
+       ▼
+┌──────────────┐
+│ Monitor      │  ← Evaluation window
+└──────────────┘
+       │
+   ┌───┴───┐
+   ▼       ▼
+Confirm  Rollback
+```
+
+<Note>
+**Enterprise Feature:** The full Restructuring Executor with step planning, idempotent execution, and automatic rollback is available in the `cogmem-acp` enterprise package.
+</Note>
+
+### Usage (Enterprise)
+
+```python
+from kos_acp import create_enterprise_acp
+
+acp = create_enterprise_acp(
+    strategy_store=strategy_store,
+    outcome_store=outcome_store,
+    proposal_store=proposal_store,
+)
+
+# Execute an approved proposal
+success = await acp.executor.execute_proposal(approved_proposal)
+
+# Manual rollback if needed
+await acp.executor.rollback_proposal(proposal, reason="Regression detected")
+```
+
+## ACP Event Types
+
+All ACP decisions emit events for full auditability:
+
+| Event | Description |
+|-------|-------------|
+| `STRATEGY_CREATED` | New strategy version created |
+| `STRATEGY_APPLIED` | Strategy activated for a scope |
+| `STRATEGY_DEPRECATED` | Strategy replaced by newer version |
+| `STRATEGY_EVALUATED` | Meta-Kernel evaluated a strategy |
+| `RESTRUCTURE_STARTED` | Restructuring execution began |
+| `RESTRUCTURE_COMPLETED` | Restructuring finished successfully |
+| `RESTRUCTURE_ROLLED_BACK` | Restructuring was rolled back |
+
+## LLM Usage in ACP
+
+LLMs may be used by the Meta-Kernel for:
+
+- Evaluating qualitative outcomes (e.g., "was this artifact helpful?")
+- Proposing strategy changes with natural language rationale
+- Explaining restructuring decisions to users
+
+<Warning>
+LLMs must NOT:
+
+- Perform direct CRUD on ObjectStore
+- Bypass Kernel validation
+- Execute restructuring without proposal approval
+
+All LLM outputs are treated as **proposals, not commands**.
+</Warning>
+
+## Non-Goals
+
+To be explicit about what the ACP does **not** do:
+
+- **No autonomous self-modifying code** — ACP changes data structures, never source code
+- **No opaque schema mutation** — every change is logged and explainable
+- **No per-request LLM decision-making** — LLMs are used in batch evaluation, not hot paths
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Knowledge Kernel" icon="brain" href="/architecture/agents">
+    The deterministic core beneath the ACP
+  </Card>
+  <Card title="Knowledge Workflows" icon="route" href="/architecture/knowledge-workflows">
+    Strategy-aware workflows
+  </Card>
+  <Card title="Architecture Overview" icon="sitemap" href="/architecture/overview">
+    Full system layer diagram
+  </Card>
+  <Card title="API Reference" icon="square-terminal" href="/api-reference/overview">
+    Explore the REST API
+  </Card>
+</CardGroup>
