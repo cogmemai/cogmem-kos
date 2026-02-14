@@ -16,12 +16,12 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/cogmem/cogmem-kos"
+        "href": "https://github.com/cogmemai/cogmem-kos"
       }
     ],
     "primary": {
       "type": "github",
-      "href": "https://github.com/cogmem/cogmem-kos"
+      "href": "https://github.com/cogmemai/cogmem-kos"
     }
   },
   "navigation": {

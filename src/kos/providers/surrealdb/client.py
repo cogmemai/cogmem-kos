@@ -52,7 +52,7 @@ class SurrealDBClient:
             # Only sign in for remote connections (ws:// or wss://)
             # Embedded connections (mem://, surrealkv:) don't need auth
             if self._url.startswith(("ws://", "wss://")):
-                await self._client.signin({"user": self._user, "pass": self._password})
+                await self._client.signin({"username": self._user, "password": self._password})
 
             await self._client.use(self._namespace, self._database)
         except ImportError:
