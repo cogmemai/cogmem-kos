@@ -220,7 +220,7 @@ class SurrealDBObjectStore(ObjectStore):
             "tenant_id": entity.tenant_id,
             "user_id": entity.user_id,
             "name": entity.name,
-            "type": entity.type.value,
+            "type": entity.entity_type.value,
             "aliases": entity.aliases,
             "metadata": entity.metadata,
         }
@@ -231,7 +231,7 @@ class SurrealDBObjectStore(ObjectStore):
             tenant_id=TenantId(data["tenant_id"]),
             user_id=UserId(data["user_id"]),
             name=data["name"],
-            type=EntityType(data["type"]),
+            entity_type=EntityType(data["type"]),
             aliases=data.get("aliases", []),
             metadata=data.get("metadata", {}),
         )

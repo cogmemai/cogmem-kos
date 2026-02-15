@@ -97,7 +97,7 @@ class EntityExtractAgent(BaseAgent):
                         tenant_id=passage.tenant_id,
                         user_id=passage.user_id,
                         name=name,
-                        type=entity_type,
+                        entity_type=entity_type,
                         aliases=[],
                         metadata={},
                     )
